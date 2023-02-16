@@ -15,27 +15,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="VFDMotorControlWindowsTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="COMPort.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VFD.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ModbusRTUclient.cpp">
+    <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="COMPort.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VFD.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ModbusRTUclient.h">
+    <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
