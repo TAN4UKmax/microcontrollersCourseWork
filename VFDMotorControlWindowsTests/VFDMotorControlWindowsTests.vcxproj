@@ -168,6 +168,11 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VFDMotorControlWindows\VFDMotorControlWindows.vcxproj">
+      <Project>{22614236-70ac-45a1-a18d-5e41e8b0e7fb}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
