@@ -17,7 +17,9 @@
 #include <cassert>
 
 //#include "VFD.h"
+//#include "ModbusRTUclient.h"
 #include "COMPort.h"
+//#include "COMPortFake.h"
 
 using namespace std;
 
@@ -34,20 +36,22 @@ int main()
 
 	// Setup and open port
 	COMPort COM("COM3");
-	//COMPort COM("COM3", 9600, 'N', 8, 1);
+	//COMPortFake COM("COM3", 9600, 'N', 8, 1);
 	assert(COM.Open());
-	COM.SetReadTimeouts(0, 0, 5000);
+	COM.SetReadTimeouts(1, 0, 0);
 	/* Transfer data */
-	// Write
+	 //Write
 	printf("\nData to write: %s\n", writebuf);
 	start_time = clock();
-	COM.Write(writebuf, 8);
+	COM.Write((unsigned char*)writebuf, 5);
 	stop_time = clock();
 	operation_time = stop_time - start_time;
 	printf("Write time: %d\n", operation_time);
+	//small delay between write and read
+	//Sleep(10);
 	// Read
 	start_time = clock();
-	COM.Read(readbuf, 4);
+	COM.Read((unsigned char*)readbuf, 8);
 	stop_time = clock();
 	printf("Read data: %s\n", readbuf);
 	operation_time = stop_time - start_time;
@@ -57,12 +61,12 @@ int main()
 
 	COM.ClearBuffers();
 	start_time = clock();
-	COM.Read(readbuf, 10);
+	COM.Read((unsigned char*)readbuf, 10);
 	stop_time = clock();
 	printf("Read data: %s\n", readbuf);
 	operation_time = stop_time - start_time;
 	printf("Read time: %d\n", operation_time);
-
+	/*ERROR_IO_PENDING*/
 	// port closes by destructor
 	return 0;
 }

@@ -128,12 +128,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="COMPort.cpp" />
+    <ClCompile Include="COMPortFake.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModbusRTUclient.cpp" />
     <ClCompile Include="VFD.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="COMPort.h" />
+    <ClInclude Include="COMPortFake.h" />
     <ClInclude Include="ModbusRTUclient.h" />
     <ClInclude Include="VFD.h" />
   </ItemGroup>

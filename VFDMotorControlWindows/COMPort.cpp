@@ -122,7 +122,8 @@ bool COMPort::WriteDCB()
 	return TRUE; // Write DCB success
 }
 
-COMPort::COMPort(const char* name /* = "COM3" */,
+COMPort::COMPort(
+	const char* name /* = "COM3" */,
 	unsigned long baud /* = 9600 */,
 	char parity /* = 'N' */,
 	unsigned char dataBit /* = 8 */,
@@ -159,7 +160,9 @@ bool COMPort::Open()
 	// Create windows device name
 	char portFullName[16] = "\\\\.\\";
 	strcpy_s(&portFullName[4], 12, name);
-
+#ifndef NDEBUG
+	printf("COMPort::Open() Full port name: %s\n", portFullName);
+#endif // NDEBUG
 	// Try to open port
 	hCOM = CreateFileA(portFullName,
 		GENERIC_READ | GENERIC_WRITE,
@@ -220,7 +223,6 @@ bool COMPort::Open()
 bool COMPort::Close()
 {
 	bool closeState = 0;
-	connected = FALSE;
 	closeState = CloseHandle(hCOM);
 	hCOM = INVALID_HANDLE_VALUE;
 	connected = FALSE;
@@ -230,7 +232,8 @@ bool COMPort::Close()
 	return closeState;
 }
 
-bool COMPort::SetConfig(unsigned long baud /* = 9600 */,
+bool COMPort::SetConfig(
+	unsigned long baud /* = 9600 */,
 	char parity /* = 'N' */,
 	unsigned char dataBit /* = 8 */,
 	unsigned char stopBit /* = 1 */)
@@ -295,23 +298,11 @@ bool COMPort::SetConfig(unsigned long baud /* = 9600 */,
 	return TRUE;
 }
 
-bool COMPort::SetReadTimeouts(unsigned long interval /* = 0 */,
+bool COMPort::SetReadTimeouts(
+	unsigned long interval /* = 0 */,
 	unsigned long multiplier /* = 0 */,
 	unsigned long constant /* = 1 */)
 {
-	// 0, 0, 1
-	// return immediately with the bytes that have already been received,
-	// even if no bytes have been received
-	// 0, 0, 0
-	// wait untill buffer is filled up to specified size
-	// 1, 0, 0
-	// If there are any bytes in the input buffer,
-	// ReadFile returns immediately with the bytes in the buffer.
-	// If there are no bytes in the input buffer,
-	// ReadFile waits until a byte arrives and then returns immediately.
-	// If no bytes arrive within the time specified by ReadTotalTimeoutConstant,
-	// ReadFile times out.
-
 	COMMTIMEOUTS timeouts;
 	if (!GetCommTimeouts(hCOM, &timeouts))
 	{
@@ -366,44 +357,49 @@ bool COMPort::ClearBuffers()
 	return TRUE;
 }
 
-long COMPort::Write(char* buf, unsigned char length)
+long COMPort::Write(unsigned char* buf, unsigned char length)
 {
 #ifndef NDEBUG
 	printf("COMPort::Write() Writing %d bytes into port: 0x", length);
-	for (int i = 0; i < length; i++)
+	for (unsigned int i = 0; i < length; i++)
 		printf(" %02X", buf[i]);
 	printf("\n");
 #endif // NDEBUG
 
 	DWORD n_bytes = 0;
 	bool writeStatus = WriteFile(hCOM, buf, length, &n_bytes, NULL);
-
+	// Check errors
 	error = GetLastError();
 	if (error == ERROR_ACCESS_DENIED)
 	{
-	assert(("COMPort::Write() Connection to port lost", 0));
-	return FALSE;
+		assert(("COMPort::Write() Connection to port lost", 0));
+		return FALSE;
 	}
 
-#ifndef NDEBUG
-	printf("COMPort::Write() %d bytes written\n", n_bytes);
-#endif // NDEBUG
-
 	if (writeStatus)
+	{
+#ifndef NDEBUG
+		printf("COMPort::Write() %d bytes written\n", n_bytes);
+#endif // NDEBUG
 		return (long)n_bytes;
+	}
 	else
+	{
+#ifndef NDEBUG
+		printf("COMPort::Write() Write failed error %u\n", error);
+#endif // NDEBUG
 		return -1;
+	}
 }
 
-long COMPort::Read(char* buf, unsigned char length)
+long COMPort::Read(unsigned char* buf, unsigned char length)
 {
 #ifndef NDEBUG
-	printf("COMPort::Read() Reading %d bytes from port:", length);
+	printf("COMPort::Read() Reading %d bytes from port: 0x", length);
 #endif // NDEBUG
-
 	DWORD n_bytes = 0;
 	bool readStatus = ReadFile(hCOM, buf, length, &n_bytes, NULL);
-
+	// Check errors
 	error = GetLastError();
 	if (error == ERROR_ACCESS_DENIED)
 	{
@@ -411,15 +407,21 @@ long COMPort::Read(char* buf, unsigned char length)
 		return FALSE;
 	}
 
-#ifndef NDEBUG
-	printf(" 0x");
-	for (int i = 0; i < n_bytes; i++)
-		printf(" %02X", buf[i]);
-	printf("\n");
-	printf("COMPort::Read() %d bytes have read\n", n_bytes);
-#endif // NDEBUG
 	if (readStatus)
+	{
+#ifndef NDEBUG
+		for (unsigned int i = 0; i < n_bytes; i++)
+			printf(" %02X", buf[i]);
+		printf("\n");
+		printf("COMPort::Read() %d bytes have read\n", n_bytes);
+#endif // NDEBUG
 		return (long)n_bytes;
+	}
 	else
+	{
+#ifndef NDEBUG
+		printf("COMPort::Read() Read failed error %u\n", error);
+#endif // NDEBUG
 		return -1;
+	}
 }

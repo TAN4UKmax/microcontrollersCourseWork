@@ -27,6 +27,9 @@
     <ClCompile Include="ModbusRTUclient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="COMPortFake.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="COMPort.h">
@@ -36,6 +39,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ModbusRTUclient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="COMPortFake.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
