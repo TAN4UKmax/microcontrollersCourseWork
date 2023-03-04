@@ -5,29 +5,22 @@
 #include <cassert>
 #ifndef NDEBUG
 #include <cstdio> // for debug printing
+#include <ctime> // for measuring transfer operations time
 #endif // NDEBUG
 
 bool COMPort::WriteDCB()
 {
-	if (connected == FALSE)
-	{
-#ifndef NDEBUG
-		printf("COMPort::WriteDCB() Port not opened\n");
-#endif // NDEBUG
-		return FALSE;
-	}
-
 	DCB dcb = { 0 };
 
 	error = GetLastError();
 
 	assert(("COMPort::WriteDCB() Some error in port", !error));
-	if (error != 0) return FALSE;
+	if (error != 0) return false;
 
 	if (!GetCommState(hCOM, &dcb))
 	{
 		assert(("COMPort::WriteDCB() Read DCB error", 0));
-		return FALSE;
+		return false;
 	}
 
 #ifndef NDEBUG
@@ -66,17 +59,17 @@ bool COMPort::WriteDCB()
 	dcb.BaudRate = baud;
 	dcb.ByteSize = dataBit;
 	dcb.StopBits = stopBit;
-	if (parity == NOPARITY) dcb.fParity = FALSE;
-	else dcb.fParity = TRUE;
+	if (parity == NOPARITY) dcb.fParity = false;
+	else dcb.fParity = true;
 	dcb.Parity = parity;
 	// Binary mode (it's the only supported on Windows anyway)
-	dcb.fBinary = TRUE;
+	dcb.fBinary = true;
 	// Don't want errors to be blocking
-	dcb.fAbortOnError = FALSE;
+	dcb.fAbortOnError = false;
 	// No software handshaking
-	dcb.fTXContinueOnXoff = TRUE;
-	dcb.fOutX = FALSE;
-	dcb.fInX = FALSE;
+	dcb.fTXContinueOnXoff = true;
+	dcb.fOutX = false;
+	dcb.fInX = false;
 
 #ifndef NDEBUG
 	printf("COMPort::WriteDCB() New DCB params:\n");
@@ -113,56 +106,185 @@ bool COMPort::WriteDCB()
 	if (!SetCommState(hCOM, &dcb))
 	{
 		assert(("COMPort::WriteDCB() Write DCB error", 0));
-		return FALSE;
+		return false;
 	}
 
 #ifndef NDEBUG
 	printf("COMPort::WriteDCB() Write DCB success\n");
 #endif // NDEBUG
-	return TRUE; // Write DCB success
+	return true; // Write DCB success
+}
+
+bool COMPort::TimeoutsSetup()
+{
+	COMMTIMEOUTS timeouts;
+	if (!GetCommTimeouts(hCOM, &timeouts))
+	{
+		assert(("COMPort::SetReadTimeouts() Read timeouts error", 0));
+		return false;
+	}
+
+#ifndef NDEBUG
+	printf("COMPort::SetReadTimeouts() Current timeouts:\n");
+	printf("- ReadIntervalTimeout: %lu\n", timeouts.ReadIntervalTimeout);
+	printf("- ReadTotalTimeoutMultiplier: %lu\n", timeouts.ReadTotalTimeoutMultiplier);
+	printf("- ReadTotalTimeoutConstant: %lu\n", timeouts.ReadTotalTimeoutConstant);
+	printf("- WriteTotalTimeoutMultiplier: %lu\n", timeouts.WriteTotalTimeoutMultiplier);
+	printf("- WriteTotalTimeoutConstant: %lu\n", timeouts.WriteTotalTimeoutConstant);
+#endif // NDEBUG
+
+	timeouts.ReadIntervalTimeout = tInterval;
+	timeouts.ReadTotalTimeoutMultiplier = tMultiplier;
+	timeouts.ReadTotalTimeoutConstant = tConstant;
+
+#ifndef NDEBUG
+	printf("COMPort::SetReadTimeouts() New timeouts:\n");
+	printf("- ReadIntervalTimeout: %lu\n", timeouts.ReadIntervalTimeout);
+	printf("- ReadTotalTimeoutMultiplier: %lu\n", timeouts.ReadTotalTimeoutMultiplier);
+	printf("- ReadTotalTimeoutConstant: %lu\n", timeouts.ReadTotalTimeoutConstant);
+	printf("- WriteTotalTimeoutMultiplier: %lu\n", timeouts.WriteTotalTimeoutMultiplier);
+	printf("- WriteTotalTimeoutConstant: %lu\n", timeouts.WriteTotalTimeoutConstant);
+#endif // NDEBUG
+
+	if (!SetCommTimeouts(hCOM, &timeouts))
+	{
+		assert(("COMPort::SetReadTimeouts() Set timeouts error", 0));
+		return false;
+	}
+#ifndef NDEBUG
+	printf("COMPort::SetReadTimeouts() Timeouts is set\n");
+#endif // NDEBUG
+	return true;
 }
 
 COMPort::COMPort(
 	const char* name /* = "COM3" */,
 	unsigned long baud /* = 9600 */,
-	char parity /* = 'N' */,
 	unsigned char dataBit /* = 8 */,
-	unsigned char stopBit /* = 1 */)
+	char parity /* = 'N' */,
+	unsigned char stopBit /* = 1 */) :
+	hCOM(INVALID_HANDLE_VALUE),
+	error(0),
+	tInterval(0),
+	tMultiplier(0),
+	tConstant(1)
 {
-	// Init class members
-	hCOM = INVALID_HANDLE_VALUE;
-	error = 0;
-	connected = FALSE;
-
 	// Check name argument
 	if (name == NULL || *name == 0)
 	{
-		assert(("COMPort::Constructor() Incorrect device name", (name && *name)));
-		throw("Incorrect device name");
+		assert(("COMPort::Constructor() Incorrect port name", (name && *name)));
+		throw("Incorrect port name");
 	}
 	// Copy port name
-	strcpy_s(this->name, 9, name);
-
-	SetConfig(baud, parity, dataBit, stopBit);
+	strcpy_s(this->name, strlen(name) + 1, name);
+	// Set default config
+	SetConfig(baud, dataBit, parity, stopBit);
 
 #ifndef NDEBUG
-	printf("COMPort::Constructor() Created instance\n");
+	printf("COMPort::Constructor() Created instance 0x%p with params:\n", this);
+	printf("- name: %s\n", name);
+	printf("- baud: %u\n", baud);
+	printf("- dataBit: %u\n", dataBit);
+	printf("- parity: %c\n", parity);
+	printf("- stopBit: %u\n", stopBit);
+	printf("- tInterval: %u\n", tInterval);
+	printf("- tMultiplier: %u\n", tMultiplier);
+	printf("- tConstant: %u\n", tConstant);
 #endif // NDEBUG
+}
+
+COMPort::COMPort(COMPort& other) :
+	hCOM(other.hCOM),
+	error(other.error),
+	baud(other.baud),
+	dataBit(other.dataBit),
+	parity(other.parity),
+	stopBit(other.stopBit),
+	tInterval(other.tInterval),
+	tMultiplier(other.tMultiplier),
+	tConstant(other.tConstant)
+{
+	memcpy(name, other.name, 9);
+	// release handle from other instance to prevent multiple access
+	other.hCOM = INVALID_HANDLE_VALUE;
+}
+
+COMPort& COMPort::operator =(COMPort& other)
+{
+	if (this != &other)
+	{
+		hCOM = other.hCOM;
+		error = other.error;
+		memcpy(name, other.name, 9);
+		baud = other.baud;
+		dataBit = other.dataBit;
+		parity = other.parity;
+		stopBit = other.stopBit;
+		tInterval = other.tInterval;
+		tMultiplier = other.tMultiplier;
+		tConstant = other.tConstant;
+		// release handle from other instance to prevent multiple access
+		other.hCOM = INVALID_HANDLE_VALUE;
+	}
+	return (*this);
+}
+
+COMPort::COMPort(COMPort&& other) noexcept :
+	hCOM(other.hCOM),
+	error(other.error),
+	baud(other.baud),
+	dataBit(other.dataBit),
+	parity(other.parity),
+	stopBit(other.stopBit),
+	tInterval(other.tInterval),
+	tMultiplier(other.tMultiplier),
+	tConstant(other.tConstant)
+{
+	// copy port parameters from other instance into this
+	memcpy(name, other.name, 9);
+	// release handle from other instance to prevent multiple access
+	other.hCOM = INVALID_HANDLE_VALUE;
+}
+
+COMPort& COMPort::operator =(COMPort&& other) noexcept
+{
+	if (this != &other)
+	{
+		// copy port parameters from other instance into this
+		hCOM = other.hCOM;
+		error = other.error;
+		memcpy(name, other.name, 9);
+		baud = other.baud;
+		dataBit = other.dataBit;
+		parity = other.parity;
+		stopBit = other.stopBit;
+		tInterval = other.tInterval;
+		tMultiplier = other.tMultiplier;
+		tConstant = other.tConstant;
+		// release handle from other instance
+		other.hCOM = INVALID_HANDLE_VALUE;
+	}
+	return (*this);
 }
 
 COMPort::~COMPort()
 {
 	Close();
+#ifndef NDEBUG
+	printf("COMPort::Destructor() Deleted instance 0x%p\n", this);
+#endif // NDEBUG
 }
 
 bool COMPort::Open()
 {
 	// Create windows device name
 	char portFullName[16] = "\\\\.\\";
-	strcpy_s(&portFullName[4], 12, name);
+	strcpy_s(&portFullName[4], strlen(name) + 1, name);
 #ifndef NDEBUG
 	printf("COMPort::Open() Full port name: %s\n", portFullName);
 #endif // NDEBUG
+	if (isOpen() == true) Close(); // close port if it is already opened by accident
+
 	// Try to open port
 	hCOM = CreateFileA(portFullName,
 		GENERIC_READ | GENERIC_WRITE,
@@ -171,71 +293,61 @@ bool COMPort::Open()
 		OPEN_EXISTING,
 		0,
 		NULL);
-
 	// Handle errors
 	error = GetLastError();
+
 	if (error == ERROR_FILE_NOT_FOUND)
 	{
 		assert(("COMPort::Open() Device not connected", 0));
 		// Connect device first
-		//printf("Сначала подключите устройство.\n");
-		return FALSE;
+		return false;
 	}
 	else if (error == ERROR_ACCESS_DENIED)
 	{
 		assert(("COMPort::Open() Port is used by another program", 0));
-		return FALSE;
+		return false;
 	}
 	else if (error != 0)
 	{
 		assert(("COMPort::Open() Other error in port opening", 0));
-		return FALSE;
+		return false;
 	}
 	// Here port is totally opened
-	connected = TRUE;
 
 	error = WriteDCB();
-	if (error == 0)
-	{
-		assert(("COMPort::Open() Error setting config to DCB", 0));
-		return FALSE;
-	}
-	error = SetReadTimeouts(0, 0, 1);
-	if (error == 0)
-	{
-		assert(("COMPort::Open() Error setting timeouts", 0));
-		return FALSE;
-	}
+	if (error == 0) return false;
+	error = TimeoutsSetup();
+	if (error == 0) return false;
 	// Here port parameters is set
-
-	error = ClearBuffers();
-	if (error == 0)
-	{
-		assert(("COMPort::Open() Clearing buffers error", 0));
-		return FALSE;
-	}
+	error = ClearReadBuffer();
+	if (error == 0) return false;
 #ifndef NDEBUG
-	printf("COMPort::Open() Port opened\n");
+	printf("COMPort::Open() Port opened (hCOM: %p)\n", hCOM);
 #endif // NDEBUG
-	return TRUE;
+	return true;
+}
+
+bool COMPort::isOpen()
+{
+	DWORD portStat = 0; // not used here but required for GetCommModemStatus function
+	return GetCommModemStatus(hCOM, &portStat);
 }
 
 bool COMPort::Close()
 {
 	bool closeState = 0;
+#ifndef NDEBUG
+	printf("COMPort::Close() Port closed (hCOM: %p)\n", hCOM);
+#endif // NDEBUG
 	closeState = CloseHandle(hCOM);
 	hCOM = INVALID_HANDLE_VALUE;
-	connected = FALSE;
-#ifndef NDEBUG
-	printf("COMPort::Close() Port closed\n");
-#endif // NDEBUG
 	return closeState;
 }
 
 bool COMPort::SetConfig(
 	unsigned long baud /* = 9600 */,
-	char parity /* = 'N' */,
 	unsigned char dataBit /* = 8 */,
+	char parity /* = 'N' */,
 	unsigned char stopBit /* = 1 */)
 {
 	// Check baud argument
@@ -260,10 +372,6 @@ bool COMPort::SetConfig(
 		this->baud = CBR_9600;
 		break;
 	}
-	// Check parity argument
-	if (parity == 'E' || parity == 'e' || parity == EVENPARITY) this->parity = EVENPARITY;
-	else if (parity == 'O' || parity == 'o' || parity == ODDPARITY) this->parity = ODDPARITY;
-	else this->parity = NOPARITY;
 	// Check data bits
 	switch (dataBit) {
 	case 5:
@@ -280,22 +388,22 @@ bool COMPort::SetConfig(
 		this->dataBit = 8;
 		break;
 	}
+	// Check parity argument
+	if (parity == 'E' || parity == 'e' || parity == EVENPARITY) this->parity = EVENPARITY;
+	else if (parity == 'O' || parity == 'o' || parity == ODDPARITY) this->parity = ODDPARITY;
+	else this->parity = NOPARITY;
 	// Check stop bits
 	if (stopBit == 1) this->stopBit = ONESTOPBIT;
 	else this->stopBit = TWOSTOPBITS;
-	// if connected then write dcb block
+	// if not opened then return here
+	if (isOpen() == false) return true;
+	// if opened then write parameters into DCB
 	error = WriteDCB();
-	if (error == 0)
-	{
-#ifndef NDEBUG
-		printf("COMPort::SetConfig() Error setting config to DCB\n");
-#endif // NDEBUG
-		return FALSE;
-	}
+	if (error == 0) return false;
 #ifndef NDEBUG
 	printf("COMPort::SetConfig() Config is set\n");
 #endif // NDEBUG
-	return TRUE;
+	return true;
 }
 
 bool COMPort::SetReadTimeouts(
@@ -303,67 +411,38 @@ bool COMPort::SetReadTimeouts(
 	unsigned long multiplier /* = 0 */,
 	unsigned long constant /* = 1 */)
 {
-	COMMTIMEOUTS timeouts;
-	if (!GetCommTimeouts(hCOM, &timeouts))
-	{
-		assert(("COMPort::SetReadTimeouts() Read timeouts error", 0));
-		return FALSE;
-	}
-
-#ifndef NDEBUG
-	printf("COMPort::SetReadTimeouts() Current timeouts:\n");
-	printf("- ReadIntervalTimeout: %lu\n", timeouts.ReadIntervalTimeout);
-	printf("- ReadTotalTimeoutMultiplier: %lu\n", timeouts.ReadTotalTimeoutMultiplier);
-	printf("- ReadTotalTimeoutConstant: %lu\n", timeouts.ReadTotalTimeoutConstant);
-	printf("- WriteTotalTimeoutMultiplier: %lu\n", timeouts.WriteTotalTimeoutMultiplier);
-	printf("- WriteTotalTimeoutConstant: %lu\n", timeouts.WriteTotalTimeoutConstant);
-#endif // NDEBUG
-
-	timeouts.ReadIntervalTimeout = interval;
-	timeouts.ReadTotalTimeoutMultiplier = multiplier;
-	timeouts.ReadTotalTimeoutConstant = constant;
-
-#ifndef NDEBUG
-	printf("COMPort::SetReadTimeouts() New timeouts:\n");
-	printf("- ReadIntervalTimeout: %lu\n", timeouts.ReadIntervalTimeout);
-	printf("- ReadTotalTimeoutMultiplier: %lu\n", timeouts.ReadTotalTimeoutMultiplier);
-	printf("- ReadTotalTimeoutConstant: %lu\n", timeouts.ReadTotalTimeoutConstant);
-	printf("- WriteTotalTimeoutMultiplier: %lu\n", timeouts.WriteTotalTimeoutMultiplier);
-	printf("- WriteTotalTimeoutConstant: %lu\n", timeouts.WriteTotalTimeoutConstant);
-#endif // NDEBUG
-
-	if (!SetCommTimeouts(hCOM, &timeouts))
-	{
-		assert(("COMPort::SetReadTimeouts() Set timeouts error", 0));
-		return FALSE;
-	}
-#ifndef NDEBUG
-	printf("COMPort::SetReadTimeouts() Timeouts is set\n");
-#endif // NDEBUG
-	return TRUE;
+	tInterval = interval;
+	tMultiplier = multiplier;
+	tConstant = constant;
+	// if not opened then return here
+	if (isOpen() == false) return true;
+	return TimeoutsSetup();
 }
 
-bool COMPort::ClearBuffers()
+bool COMPort::ClearReadBuffer()
 {
-	error = PurgeComm(hCOM, PURGE_TXABORT | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_RXCLEAR);
+	if (isOpen() == false) Open();
+	error = PurgeComm(hCOM, PURGE_RXABORT | PURGE_RXCLEAR);
 	if (error == 0)
 	{
-		assert(("COMPort::ClearBuffers() Clearing buffers error", 0));
-		return FALSE;
+		assert(("COMPort::ClearReadBuffer() Clearing read buffer error", 0));
+		return false;
 	}
 #ifndef NDEBUG
-	printf("COMPort::ClearBuffers() Clearing buffers success\n");
+	printf("COMPort::ClearReadBuffer() Clearing read buffer success\n");
 #endif // NDEBUG
-	return TRUE;
+	return true;
 }
 
 long COMPort::Write(unsigned char* buf, unsigned char length)
 {
+	if (isOpen() == false) Open();
 #ifndef NDEBUG
 	printf("COMPort::Write() Writing %d bytes into port: 0x", length);
 	for (unsigned int i = 0; i < length; i++)
 		printf(" %02X", buf[i]);
 	printf("\n");
+	clock_t start_time = clock();
 #endif // NDEBUG
 
 	DWORD n_bytes = 0;
@@ -373,13 +452,13 @@ long COMPort::Write(unsigned char* buf, unsigned char length)
 	if (error == ERROR_ACCESS_DENIED)
 	{
 		assert(("COMPort::Write() Connection to port lost", 0));
-		return FALSE;
+		return false;
 	}
 
 	if (writeStatus)
 	{
 #ifndef NDEBUG
-		printf("COMPort::Write() %d bytes written\n", n_bytes);
+		printf("COMPort::Write() %d bytes written in %ldms\n", n_bytes, (clock() - start_time));
 #endif // NDEBUG
 		return (long)n_bytes;
 	}
@@ -394,7 +473,9 @@ long COMPort::Write(unsigned char* buf, unsigned char length)
 
 long COMPort::Read(unsigned char* buf, unsigned char length)
 {
+	if (isOpen() == false) Open();
 #ifndef NDEBUG
+	clock_t start_time = clock();
 	printf("COMPort::Read() Reading %d bytes from port: 0x", length);
 #endif // NDEBUG
 	DWORD n_bytes = 0;
@@ -404,7 +485,7 @@ long COMPort::Read(unsigned char* buf, unsigned char length)
 	if (error == ERROR_ACCESS_DENIED)
 	{
 		assert(("COMPort::Read() Connection to port lost", 0));
-		return FALSE;
+		return false;
 	}
 
 	if (readStatus)
@@ -412,8 +493,7 @@ long COMPort::Read(unsigned char* buf, unsigned char length)
 #ifndef NDEBUG
 		for (unsigned int i = 0; i < n_bytes; i++)
 			printf(" %02X", buf[i]);
-		printf("\n");
-		printf("COMPort::Read() %d bytes have read\n", n_bytes);
+		printf("\nCOMPort::Read() %d bytes have read in %ldms\n", n_bytes, (clock() - start_time));
 #endif // NDEBUG
 		return (long)n_bytes;
 	}

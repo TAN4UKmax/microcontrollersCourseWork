@@ -2,71 +2,784 @@
  * @file main.cpp
  * @author TAN4UK (tan4ukmak7@gmail.com)
  * @brief VFDMotorControl main file
- * @version 0.1
- * @date 2023-02-13
- * 
+ *
+
+ // TODO чтобы корректно считывать направление вращения по состоянию светодиода,
+ задаю частоту без измен ения знака, а чтобы это реализовать, разбиваю линию с изменением знака на 2 участка 
+ с помощью интерполяционной формулы
+
+ // TODO добавить тип параметров в doxygen комментарии ([in], [out])
+
+ // TODO изменить структуру программы с отделением обработки файла в отдельный модуль
+
+Help
+This program can control Delta VFD-B.
+Input commandline arguments:
+-h | --help         Display this help message
+--port <COMx>       Specify serial port (COM3 default) (--port COM3)
+--file <text_file>	Read a file with frequency and time parameters table. (--file coords.txt)
+					And run motor according to the table.
+Text file should contain table with times and frequencies and should look like this:
+Time	Frequency
+0	0
+10	20
+20	30
+30	10
+40	-10
+50	0
+(The first column specifies the time to be set.
+The second column specifies the frequency that will be reached for the time,
+specified in the first column.)
+--get <parameter>   Read one of the following motor parameters: (--get MotorSpeed)
+					<FrequencyCommand>
+					<OutFrequency>
+					<OutCurrent>
+					<DCVoltage>
+					<OutVoltage>
+					<PowerFactor>
+					<OutTorque>
+					<MotorSpeed>
+					<OutPower>
+					<VFDTemperature>
+--set <parameter> <value>  Set one of the folloving motor parameters: (--set Frequency 45.5)
+					<Frequency>
+					<AccelerationTime>
+					<DecelerationTime>
+--run <n|f|r|c>     Run motor with direction set (no change, forvard, reverse, change) (--run r)
+--stop              Stop motor
+
+ *
+ * @version 0.2
+ * @date 2023-03-01
+ *
  * @copyright Copyright (c) 2023 TAN4UK
- * 
+ *
  */
 
-#include <cstdio>
-#include <clocale>
-#include <ctime>
+ // Includes ///////////////////////////////////////////////////////////////////
 
- //#define NDEBUG
-#include <cassert>
+#include <cstdio>	// for 'printf'
+#include <cstdlib>	// for 'atof'
+#include <cstring>	// for string operations like 'strlen' and 'strcpy'
+#include <ctime>	// for time intervals in milliseconds measure
 
-//#include "VFD.h"
-//#include "ModbusRTUclient.h"
-#include "COMPort.h"
-//#include "COMPortFake.h"
+//#define NDEBUG
+#include <cassert>	// for debug printing
 
-using namespace std;
+#include "VFD.h"
 
-char writebuf[10] = "Hello";
-char readbuf[10] = { 0 };
-clock_t start_time = 0;
-clock_t stop_time = 0;
-clock_t operation_time = 0;
+#include "main.h"
 
-int main()
+// using namespace std;
+
+// Global variables ///////////////////////////////////////////////////////////
+
+// CLI keys flags and values
+struct {
+	bool help;
+	bool file;
+	bool get;
+	bool set;
+	bool run;
+	bool stop;
+} CMD;
+char portName[9] = "COM3";			// port name from command line
+char* diagramFileName = nullptr;	// file name with diagram
+// Get parameters flags
+struct {
+	bool FrequencyCommand;
+	bool OutFrequency;
+	bool OutCurrent;
+	bool DCVoltage;
+	bool OutVoltage;
+	bool PowerFactor;
+	bool OutTorque;
+	bool MotorSpeed;
+	bool OutPower;
+	bool VFDTemperature;
+} getParam;
+VFD_status_t motorStatus = { 0 };	// Stores motor status
+VFD_param_t motorParams = { 0 };	// Stores motor parameters
+double VFDtemperature;				// Stores temperature of VFD heatsink
+// Set parameters flags and values
+struct {
+	bool Frequency_f;				// Set Frequency flag
+	double Frequency_v;				// Set Frequency value
+	bool AccelerationTime_f;		// Set AccelerationTime flag
+	double AccelerationTime_v;		// Set AccelerationTime value
+	bool DecelerationTime_f;		// Set DecelerationTime flag
+	double DecelerationTime_v;		// Set DecelerationTime value
+} setParam;
+unsigned short runMode; // 0 - no change, 1 - forward, 2 - reverse, 3 - change
+
+// Function prototypes ////////////////////////////////////////////////////////
+/**
+ * @brief Read CLI arguments and set flags according to input arguments.
+ * Take input arguments for this function from main(int argc, char* argv[])
+ *
+ * @param argc      - number of input arguments passed by user
+ * @param argv      - array of character pointers listing all the arguments
+ */
+void HandleCLIArguments(int argc, char* argv[]);
+
+/**
+ * @brief Print help message about program and
+ * available command line arguments
+ *
+ */
+void PrintHelp();
+
+/**
+ * @brief Run motor according to the file with input coordinats.
+ * Also measure motor parameters specified by -- get CLI argument.
+ *
+ * @param motor     - reference to VFD class instance
+ * @return true     - if motor have run according to the file
+ * @return false    - if some error occured
+ */
+bool RunDiagramFromFile(VFD& motor);
+
+/**
+ * @brief Get the Next Time and Frequency pair from file with diagram coordinates
+ * 
+ * @param diagramFile   - pointer to FILE handle with diagram
+ * @param curTime       - current time
+ * @param curFreq       - current frequency
+ * @param nextTime      - pointer to variable when the next time will be stored
+ * @param nextFreq      - pointer to variable when the next frequency will be stored
+ * @return true         - if new coordinates have read
+ * @return false        - if no new coordinates (end of file reached)
+ */
+bool GetNextTimeAndFrequency(FILE* diagramFile,
+	double curTime, double curFreq,
+	double* nextTime, double* nextFreq);
+
+/**
+ * @brief Get the Motor Parameters requested by user and print them
+ *
+ * @param motor     - reference to VFD class instance
+ * @return true     - if all motor parameters have read successfully
+ * @return false    - if some error occured
+ */
+bool GetMotorParameters(VFD& motor);
+
+/**
+ * @brief Print table header for parameters, specified in input arguments
+ *
+ * @param Time			- Should be true if you want to print time later
+ * @param printStream	- File handle, if not specified, parameters will be printed into stdout stream
+ */
+void PrintParametersHeader(bool Time = false, FILE* printStream = stdout);
+
+/**
+ * @brief Print parameters, specified in input arguments
+ *
+ * @param Time			- if you want to print time specify it here
+ * @param printStream	- File handle, if not specified, parameters will be printed into stdout stream
+ */
+void PrintParameters(double Time = -1, FILE* printStream = stdout);
+
+/**
+ * @brief Set the Motor Parameters specified by user
+ *
+ * @param motor     - reference to VFD class instance
+ * @return true     - if all motor parameters have set successfully
+ * @return false    - if some error occured
+ */
+bool SetMotorParameters(VFD& motor);
+
+/* Main function *************************************************************/
+/**
+ * @brief Program entry point. Accepts CLI arguments provided by user
+ *
+ * @param argc      - number of input arguments passed by user
+ * @param argv      - array of character pointers listing all the arguments
+ * @return int      - 0 if program have finished successfully, -1 otherwise
+ */
+int main(int argc, char* argv[])
 {
-	// Set locale
-	setlocale(LC_ALL, "rus");
+	// CLI arguments handle ///////////////////////////////////////////////////
+	HandleCLIArguments(argc, argv);
+	if (argc <= 1) // if run without arguments
+	{
+		printf("This program requires input arguments.");
+		CMD.help = true;
+	}
+	// Print help text ////////////////////////////////////////////////////////
+	PrintHelp();
 
-	// Setup and open port
-	COMPort COM("COM3");
-	//COMPortFake COM("COM3", 9600, 'N', 8, 1);
-	assert(COM.Open());
-	COM.SetReadTimeouts(1, 0, 0);
-	/* Transfer data */
-	 //Write
-	printf("\nData to write: %s\n", writebuf);
-	start_time = clock();
-	COM.Write((unsigned char*)writebuf, 5);
-	stop_time = clock();
-	operation_time = stop_time - start_time;
-	printf("Write time: %d\n", operation_time);
-	//small delay between write and read
-	//Sleep(10);
-	// Read
-	start_time = clock();
-	COM.Read((unsigned char*)readbuf, 8);
-	stop_time = clock();
-	printf("Read data: %s\n", readbuf);
-	operation_time = stop_time - start_time;
-	printf("Read time: %d\n", operation_time);
+	VFD motor({ 1, { portName, 9600, 8, 'E', 1 } }); // VFD class instance
 
-	/* Clear buffers test */
+	// File handling //////////////////////////////////////////////////////////
+	if (CMD.file)
+	{
+		if (!RunDiagramFromFile(motor)) return -1;
+		return 0; // after diagram from file running program doesn't accept any commands
+	}
+	// Get param handling /////////////////////////////////////////////////////
+	if (CMD.get)
+	{
 
-	COM.ClearBuffers();
-	start_time = clock();
-	COM.Read((unsigned char*)readbuf, 10);
-	stop_time = clock();
-	printf("Read data: %s\n", readbuf);
-	operation_time = stop_time - start_time;
-	printf("Read time: %d\n", operation_time);
-	/*ERROR_IO_PENDING*/
-	// port closes by destructor
+		if (!GetMotorParameters(motor)) return -1;
+		PrintParametersHeader();
+		PrintParameters();
+	}
+	// Set param handling /////////////////////////////////////////////////////
+	if (!SetMotorParameters(motor)) return -1;
+	// Run handling ///////////////////////////////////////////////////////////
+	if (CMD.run)
+	{
+#ifndef NDEBUG
+		clock_t start_time = clock();
+#endif // NDEBUG
+		if (!motor.Run(runMode))
+		{
+			assert(("main: Run error", 0));
+			return -1;
+		}
+#ifndef NDEBUG
+		printf("main: Motor started in %ldms\n", (clock() - start_time));
+#endif // NDEBUG
+	}
+	// Stop handling //////////////////////////////////////////////////////////
+	if (CMD.stop)
+	{
+#ifndef NDEBUG
+		clock_t start_time = clock();
+#endif // NDEBUG
+		if (!motor.Stop())
+		{
+			assert(("main: Stop error", 0));
+			return -1;
+		}
+#ifndef NDEBUG
+		printf("main: Motor stopped in %ldms\n", (clock() - start_time));
+#endif // NDEBUG
+	}
 	return 0;
+}
+
+void HandleCLIArguments(int argc, char* argv[])
+{
+	// Handle arguments and find matches
+	for (int i = 0; i < argc; i++)
+	{
+		if (argv[i] == nullptr) continue;
+#ifndef NDEBUG
+		printf("main: Arg %d: %s\n", i, argv[i]);
+#endif // NDEBUG
+		// Handle --help argument
+		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help"))
+		{
+			CMD.help = true;
+		}
+		// Handle --port argument
+		else if (!strcmp(argv[i], "--port"))
+		{
+			if (argv[i + 1] != nullptr)
+			{
+				size_t len;
+				if (strlen(argv[i + 1]) < 9) len = strlen(argv[i + 1]);
+				else len = 8;
+				// Copy port name
+				strcpy_s(portName, len + 1, argv[i + 1]);
+			}
+		}
+		// Handle --file argument
+		else if (!strcmp(argv[i], "--file"))
+		{
+
+			if (argv[i + 1] != nullptr)
+			{
+				CMD.file = true;
+				diagramFileName = argv[i + 1];
+			}
+		}
+		// Handle --get argument
+		else if (!strcmp(argv[i], "--get"))
+		{
+			CMD.get = true;
+			if (argv[i + 1] != nullptr)
+			{
+				if (!strcmp(argv[i + 1], "FrequencyCommand"))
+					getParam.FrequencyCommand = true;
+				else if (!strcmp(argv[i + 1], "OutFrequency"))
+					getParam.OutFrequency = true;
+				else if (!strcmp(argv[i + 1], "OutCurrent"))
+					getParam.OutCurrent = true;
+				else if (!strcmp(argv[i + 1], "DCVoltage"))
+					getParam.DCVoltage = true;
+				else if (!strcmp(argv[i + 1], "OutVoltage"))
+					getParam.OutVoltage = true;
+				else if (!strcmp(argv[i + 1], "PowerFactor"))
+					getParam.PowerFactor = true;
+				else if (!strcmp(argv[i + 1], "OutTorque"))
+					getParam.OutTorque = true;
+				else if (!strcmp(argv[i + 1], "MotorSpeed"))
+					getParam.MotorSpeed = true;
+				else if (!strcmp(argv[i + 1], "OutPower"))
+					getParam.OutPower = true;
+				else if (!strcmp(argv[i + 1], "VFDTemperature"))
+					getParam.VFDTemperature = true;
+			}
+		}
+		// Handle --set argument
+		else if (!strcmp(argv[i], "--set"))
+		{
+			CMD.set = true;
+			if (argv[i + 1] != nullptr)
+			{
+				if (!strcmp(argv[i + 1], "Frequency"))
+				{
+					setParam.Frequency_f = true;
+					if (argv[i + 2] != nullptr) setParam.Frequency_v = atof(argv[i + 2]);
+				}
+				if (!strcmp(argv[i + 1], "AccelerationTime"))
+				{
+					setParam.AccelerationTime_f = true;
+					if (argv[i + 2] != nullptr) setParam.AccelerationTime_v = atof(argv[i + 2]);
+				}
+				if (!strcmp(argv[i + 1], "DecelerationTime"))
+				{
+					setParam.DecelerationTime_f = true;
+					if (argv[i + 2] != nullptr) setParam.DecelerationTime_v = atof(argv[i + 2]);
+				}
+			}
+		}
+		// Handle --run argument
+		else if (!strcmp(argv[i], "--run"))
+		{
+			CMD.run = true;
+			if (argv[i + 1] != nullptr)
+			{
+				switch (argv[i + 1][0])
+				{
+				case 'f':
+					runMode = 1; // forward
+					break;
+				case 'r':
+					runMode = 2; // reverse
+					break;
+				case 'c':
+					runMode = 3; // change
+					break;
+				default:
+					runMode = 0; // no change
+					break;
+				}
+			}
+		}
+		// Handle --stop argument
+		else if (!strcmp(argv[i], "--stop"))
+		{
+			CMD.stop = true;
+		}
+	}
+	return;
+}
+
+void PrintHelp()
+{
+	if (CMD.help)
+	{
+		printf("\nHelp.\n");
+		printf("This program can control Delta VFD-B.\n");
+		printf("Input commandline arguments:\n");
+		printf("-h | --help\t\t\tDisplay this help message\n");
+		printf("--port <COMx>\t\t\tSpecify serial port (COM3 default) (--port COM3)\n");
+		printf("--file <text_file>\t\tRead a file with frequency and time parameters table. (--file coords.txt)\n");
+		printf("\t\t\t\tAnd run motor according to the table.\n");
+		printf("Text file should contain table with times and frequencies and should look like this:\n");
+		printf("Time\tFrequency\n");
+		printf("0\t0\n");
+		printf("10\t20\n");
+		printf("20\t30\n");
+		printf("30\t10\n");
+		printf("40\t-10\n");
+		printf("50\t0\n");
+		printf("(The first column specifies the time to be set.\n");
+		printf("The second column specifies the frequency that will be reached for the time,\n");
+		printf("specified in the first column.)\n");
+		printf("--get <parameter>\t\tRead one of the following motor parameters: (--get MotorSpeed)\n");
+		printf("\t\t\t\t<FrequencyCommand>\n");
+		printf("\t\t\t\t<OutFrequency>\n");
+		printf("\t\t\t\t<OutCurrent>\n");
+		printf("\t\t\t\t<DCVoltage>\n");
+		printf("\t\t\t\t<OutVoltage>\n");
+		printf("\t\t\t\t<PowerFactor>\n");
+		printf("\t\t\t\t<OutTorque>\n");
+		printf("\t\t\t\t<MotorSpeed>\n");
+		printf("\t\t\t\t<OutPower>\n");
+		printf("\t\t\t\t<VFDTemperature>\n");
+		printf("--set <parameter> <value>\tSet one of the folloving motor parameters: (--set Frequency 45.5)\n");
+		printf("\t\t\t\t<Frequency>\n");
+		printf("\t\t\t\t<AccelerationTime>\n");
+		printf("\t\t\t\t<DecelerationTime>\n");
+		printf("--run <n|f|r|c>\t\t\tRun motor with direction set (no change, forvard, reverse, change) (--run r)\n");
+		printf("--stop\t\t\t\tStop motor\n\n");
+	}
+}
+
+bool RunDiagramFromFile(VFD& motor)
+{
+	// 1) Update max frequency parameter from VFD (and check connection by doing this)
+	if (!motor.ReadMaxFrequency())
+	{
+		assert(("main::RunDiagramFromFile(): Read max frequency error", 0));
+		return false;
+	}
+	// 2) Open file with required diagram and check open error
+	FILE* diagram_FILE;
+	int openStatus = fopen_s(&diagram_FILE, diagramFileName, "r");
+	if ((diagram_FILE == nullptr) || openStatus)
+	{
+		assert(("main.RunDiagramFromFile(): Read coords file error", 0));
+		return false;
+	}
+	// 3) Print output parameters table header to screen
+	PrintParametersHeader(true);
+	// 4) Update max frewuency and read parameters to determine current frequency
+	// (This will allow to start motor not only from zero frequency)
+	if (!motor.ReadParameterRegisters(&motorStatus, &motorParams))
+	{
+		assert(("main::RunDiagramFromFile(): Read initial motor parameters error", 0));
+		return false;
+	}
+	// 5) Set watchdog 
+	if (!motor.SetWatchdog(1))
+	{
+		assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
+		return false;
+	}
+	// 6) Create initial variables
+	// parameters from file
+	double	fileFreqNext = motorParams.OutFrequency;	// next frequency from file
+	double	fileTimeNext = 0;							// next time from file
+	double	fileFreqCur = 0;							// current frequency from file
+	double	fileTimeCur = 0;							// current time from file
+	// temporary variables (necessary for part of diagram when direction changes)
+	bool	dirChange = false;							// true if direction is going to change
+	double	tempTime = 0;								// stores temporary time
+	double	tempFreq = 0;								// stores temporary frequency
+	// timers
+	double	timeStart = clock() / 1000.0;				// time of start following diagram in seconds
+	double	timeGetLastParam = 0;						// last time of parameters measure
+	// Start following diagram ////////////////////////////////////////////////
+	while (true)
+	{
+		double timeNow = (clock() / 1000.0) - timeStart; // current moment time (seconds)
+		// Set new motor parameters
+		if (timeNow >= fileTimeNext) // if current time is greater than assigned time from file
+		{
+			timeGetLastParam = timeNow; // to prevent reading next param after writing (without delay)
+			fileTimeCur = timeNow; // timeNow here to calculate parameters more precise
+			//fileFrequencyCurrent = motorParams.OutFrequency; // update frequency
+			fileFreqCur = fileFreqNext; // update frequency (this variant works more precise)
+			// Read new time and frequency parameters from file
+			if (!GetNextTimeAndFrequency(diagram_FILE, fileTimeCur, fileFreqCur, &fileTimeNext, &fileFreqNext))
+			{
+				// Reached end of file
+				// stop motor at the minimal deceleration (0 deceleration time is dangerous)
+				if (!motor.SetDecelerationTime(1) || !motor.Stop() || !motor.SetWatchdog(0))
+				{
+					assert(("main::RunDiagramFromFile(): Stop motor error", 0));
+					return false;
+				}
+				return true;
+			}
+			// Set new parameters
+			if (!motor.ChangeFrequency(fileFreqCur, fileFreqNext, fileTimeNext - fileTimeCur))
+			{
+				assert(("main::RunDiagramFromFile(): Change frequency error", 0));
+				return false;
+			}
+			// Reset start time in debug mode (DISABLE IT LATER) ///////////////////////////////////////////////////////
+#ifndef NDEBUG
+			timeStart = (clock() / 1000.0) - timeNow;
+#endif // NDEBUG
+		}
+		// Read current motor parameters (every 100 ms)
+		// read only when no write operations in the next 100 ms
+		const double readInterval = 0.1;	// time interval between read parameters
+		if (((timeNow - timeGetLastParam) > readInterval) && ((timeNow + readInterval) < fileTimeNext))
+		{
+			timeGetLastParam = timeNow;
+			if (!GetMotorParameters(motor))
+				return false;
+			timeNow = (clock() / 1000.0) - timeStart; // get new fresh time
+			PrintParameters(timeNow); // Print parameters to sceen
+			// Print parameters to file
+			FILE* param_FILE;
+			int openStatus = fopen_s(&param_FILE, "paramTable.txt", "w");
+			if ((param_FILE == nullptr) || openStatus)
+			{
+				assert(("main.RunDiagramFromFile(): Create paramTable.txt file error", 0));
+				return false;
+			}
+			PrintParametersHeader(true, param_FILE);
+			PrintParameters(timeNow, param_FILE);
+			fclose(param_FILE);
+		}
+		// Small delay between iterations for stability
+		Sleep(1);
+	}
+	return true;
+}
+
+bool GetNextTimeAndFrequency(FILE* diagramFile,
+	double curTime, double curFreq,
+	double* nextTime, double* nextFreq)
+{
+	// temporary variables (necessary for part of diagram when direction changes)
+	static bool		dirChange = false;	// true if direction is going to change
+	static double	tempTime = 0;		// stores temporary time
+	static double	tempFreq = 0;		// stores temporary frequency
+	if (!dirChange) // no direction change
+	{
+		while (true)
+		{
+			int read_result = fscanf_s(diagramFile, "%lf%lf",
+				nextTime, nextFreq);
+			// success read check
+			if ((read_result == 2) && (*nextTime > curTime))
+			{
+				// check direction change
+				if ((curFreq *  (*nextFreq)) < 0)
+				{
+					dirChange = true;
+					tempTime = *nextTime;
+					tempFreq = *nextFreq;
+					*nextFreq = 0;
+					// Calculate time when frequency should be 0 with interpolation
+					*nextTime = curTime + (*nextFreq - curFreq) *
+						((tempTime - curTime) / (tempFreq - curFreq));
+				}
+				return true;
+			}
+			// clean current line
+			while ((fgetc(diagramFile) != '\n') && (!feof(diagramFile)));
+			if (feof(diagramFile)) return false;// reached end of file
+		}
+	}
+	else // direction is going to change
+	{
+		*nextTime = tempTime;
+		*nextFreq = tempFreq;
+		dirChange = false;
+	}
+	return true;
+}
+
+bool GetMotorParameters(VFD& motor)
+{
+#ifndef NDEBUG
+	clock_t start_time = clock();
+#endif // NDEBUG
+	// Read all parameters and status
+	if (!motor.ReadParameterRegisters(&motorStatus, &motorParams))
+	{
+		assert(("main: Read parameters error", 0));
+		return false;
+	}
+	// Read VFDTemperature parameter
+	if (getParam.VFDTemperature)
+	{
+		if (!motor.GetVFDTemperature(&VFDtemperature))
+		{
+			assert(("main: Read temperature error", 0));
+			return false;
+		}
+	}
+#ifndef NDEBUG
+	printf("Read param time: %ld\n", clock() - start_time);
+#endif // NDEBUG
+	return true;
+}
+
+void PrintParametersHeader(bool Time /* = false */, FILE* printStream /* = stdout */)
+{
+	// Print parameters given in --get argument
+	bool firstTime = true;
+	if (Time)
+	{
+		firstTime = false;
+		fprintf(printStream, "Time");
+	}
+	if (getParam.FrequencyCommand)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "FrequencyCommand");
+	}
+	if (getParam.OutFrequency)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "OutFrequency");
+	}
+	if (getParam.OutCurrent)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "OutCurrent");
+	}
+	if (getParam.DCVoltage)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "DCVoltage");
+	}
+	if (getParam.OutVoltage)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "OutVoltage");
+	}
+	if (getParam.PowerFactor)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "PowerFactor");
+	}
+	if (getParam.OutTorque)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "OutTorque");
+	}
+	if (getParam.MotorSpeed)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "MotorSpeed");
+	}
+	if (getParam.OutPower)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "OutPower");
+	}
+	if (getParam.VFDTemperature)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "VFDTemperature");
+	}
+	fprintf(printStream, "\n");
+}
+
+void PrintParameters(double Time /* = -1 */, FILE* printStream /* = stdout */)
+{
+	// Print parameters given in --get argument
+	bool firstTime = true;
+	if (Time > -0.5)
+	{
+		firstTime = false;
+		fprintf(printStream, "%g", Time);
+	}
+	if (getParam.FrequencyCommand)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.FrequencyCommand);
+	}
+	if (getParam.OutFrequency)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.OutFrequency);
+	}
+	if (getParam.OutCurrent)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.OutCurrent);
+	}
+	if (getParam.DCVoltage)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.DCVoltage);
+	}
+	if (getParam.OutVoltage)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.OutVoltage);
+	}
+	if (getParam.PowerFactor)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.PowerFactor);
+	}
+	if (getParam.OutTorque)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.OutTorque);
+	}
+	if (getParam.MotorSpeed)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.MotorSpeed);
+	}
+	if (getParam.OutPower)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", motorParams.OutPower);
+	}
+	if (getParam.VFDTemperature)
+	{
+		if (firstTime) firstTime = false;
+		else fprintf(printStream, "\t");
+		fprintf(printStream, "%g", VFDtemperature);
+	}
+	fprintf(printStream, "\n");
+}
+
+bool SetMotorParameters(VFD& motor)
+{
+	if (CMD.set)
+	{
+		// Set frequency
+		if (setParam.Frequency_f)
+		{
+			if (!motor.SetFrequency(setParam.Frequency_v))
+			{
+				assert(("main: Set frequency error", 0));
+				return false;
+			}
+#ifndef NDEBUG
+			printf("main: Frequency %gHz set\n", setParam.Frequency_v);
+#endif // NDEBUG
+		}
+		// Set acceleration time
+		if (setParam.AccelerationTime_f)
+		{
+			if (!motor.SetAccelerationTime(setParam.AccelerationTime_v))
+			{
+				assert(("main: Set acceleration time error", 0));
+				return false;
+			}
+#ifndef NDEBUG
+			printf("main: Acceleration time %gs set\n", setParam.AccelerationTime_v);
+#endif // NDEBUG
+		}
+		// Set deceleration time
+		if (setParam.DecelerationTime_f)
+		{
+			if (!motor.SetDecelerationTime(setParam.DecelerationTime_v))
+			{
+				assert(("main: Set deceleration time error", 0));
+				return false;
+			}
+#ifndef NDEBUG
+			printf("main: Deceleration time %gs set\n", setParam.DecelerationTime_v);
+#endif // NDEBUG
+		}
+	}
+	return true;
 }

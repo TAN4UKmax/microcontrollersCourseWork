@@ -1,7 +1,9 @@
 /**
  * @file COMPortFake.h
  * @author TAN4UK (tan4ukmak7@gmail.com)
- * @brief Fake class for testing Modbus (returns predefined data instead of reading actual port)
+ * @brief Fake class for testing Modbus (returns predefined data instead of reading the port itself)
+ * All methods which are marked as not used in their description are not necessary to use.
+ * Only 
  * @version 0.1
  * @date 2023-02-18
  *
@@ -14,41 +16,53 @@
 
 #include <Windows.h>
 
-//#define NDEBUG
-
 class COMPortFake
 {
 private:
-    bool            connected;  // current status of COM port
-
     char            name[9];    // COM port name ("COM3" by default)
     unsigned long   baud;       // baudrate of communication (9600 by default)
-    char            parity;     // parity parameter ('N' by default)
     unsigned char   dataBit;    // number of bits of data (8 by default)
+    char            parity;     // parity parameter ('N' by default)
     unsigned char   stopBit;    // number of stop bits (1 by default)
 
+    bool            opened;     // current status of COM port
+
     /**
-     * @brief Writes parameters into DCB block if port is open
-     * 
-     * @return true     - if success
-     * @return false    - if fails
+     * @brief Calculates CRC16
+     *   Шаг 1 : Загрузка 16-bit регистра (называемого CRC регистром) с FFFFH;
+     *   Шаг 2: Исключающее ИЛИ первому 8-bit байту из командного сообщения с байтом младшего
+     *   порядка из 16-bit регистра CRC, помещение результата в CRC регистр.
+     *   Шаг 3: Сдвиг одного бита регистра CRC вправо с MSB нулевым заполнением. Извлечение и
+     *   проверка LSB.
+     *   Шаг 4: Если LSB CRC регистра равно 0, повторите шаг 3, в противном случае исключающее ИЛИ
+     *   CRC регистра с полиномиальным значением A001H.
+     *   Шаг 5: Повторяйте шаг 3 и 4, до тех пор, пока восемь сдвигов не будут выполнены. Затем, полный
+     *   8-bit байт будет обработан.
+     *   Шаг 6: Повторите шаг со 2 по 5 для следующих 8-bit байтов из командного сообщения.
+     *   Продолжайте пока все байты не будут обработаны. Конечное содержание CRC регистра CRC
+     *   значение. При передачи значения CRC в сообщении, старшие и младшие байты значения CRC должны
+     *   меняться, то есть сначала будет передан младший байт.
+     *
+     * @param data          - a pointer to the message buffer
+     * @param length        - the message buffer length
+     * @return unsigned int - calculated CRC
      */
-    bool WriteDCB();
+    unsigned int CRC16(unsigned char* data, unsigned char length);
 public:
     /**
-     * @brief Construct a new COMPortFake object
+     * @brief (It will work with any configuration in COMPortFake) Construct a new COMPortFake object
      * 
      * @param name      - COM port name ("COM3" by default)
      * @param baud      - baudrate of communication (9600 by default)
-     * @param parity    - parity parameter ('N' or NOPARITY by default)
      * @param dataBit   - number of bits of data (8 by default)
+     * @param parity    - parity parameter ('N' or NOPARITY by default)
      * @param stopBit   - number of stop bits (1 or ONESTOPBIT by default)
      */
     COMPortFake(
         const char* name = "COM3",
         unsigned long baud = 9600,
-        char parity = 'N',
         unsigned char dataBit = 8,
+        char parity = 'N',
         unsigned char stopBit = 1);
 
     /**
@@ -60,16 +74,24 @@ public:
     /**
      * @brief Open COM port communication
      * 
-     * @return true  - if open success
-     * @return false - if open fails
+     * @return true     - if open success
+     * @return false    - if open fails
      */
     bool Open();
 
     /**
+     * @brief Check current state of COM port
+     *
+     * @return true     - Port is opened
+     * @return false    - Port is closed
+     */
+    bool isOpen();
+
+    /**
      * @brief Close COM port communication
      * 
-     * @return true - if close success
-     * @return false -if close fails
+     * @return true     - if close success
+     * @return false    - if close fails
      */
     bool Close();
 
@@ -77,21 +99,32 @@ public:
      * @brief Set the Config of port, allows to change COM port configuration after creating an object
      * 
      * @param baud      - baudrate of communication (9600 by default)
-     * @param parity    - parity parameter ('N' or NOPARITY by default)
      * @param dataBit   - number of bits of data (8 by default)
+     * @param parity    - parity parameter ('N' or NOPARITY by default)
      * @param stopBit   - number of stop bits (1 or ONESTOPBIT by default)
      * @return true     - if port parameters changed
      * @return false    - if change fails
      */
     bool SetConfig(
         unsigned long baud = 9600,
-        char parity = 'N',
         unsigned char dataBit = 8,
+        char parity = 'N',
         unsigned char stopBit = 1);
     
     /**
-     * @brief Set the Read Timeouts for COM port buffer
-     * 
+     * @brief Set the Read Timeouts for COM port buffer.
+     * (0, 0, 1)
+     * - return immediately with the bytes that have already been received,
+     * even if no bytes have been received
+     * (0, 0, 0)
+     * - wait untill buffer is filled up to specified size
+     * (1, 0, 0)
+     * - If there are any bytes in the input buffer,
+     * ReadFile returns immediately with the bytes in the buffer.
+     * If there are no bytes in the input buffer,
+     * ReadFile waits until a byte arrives and then returns immediately.
+     * If no bytes arrive within the time specified by ReadTotalTimeoutConstant,
+     * ReadFile times out.
      * @param interval      - The maximum time allowed to elapse before the arrival of the next byte on the communications line, in milliseconds
      * @param multiplier    - The multiplier used to calculate the total time-out period for read operations, in milliseconds.
      * @param constant      - A constant used to calculate the total time-out period for read operations, in milliseconds.
@@ -104,12 +137,12 @@ public:
         unsigned long constant = 1);
     
     /**
-     * @brief Clears input and output buffer of port and terminates all current read and write operations
-     * 
-     * @return true - if clear success
-     * @return false -if clear fails
+     * @brief Clears input buffer of port and terminates all current read operations
+     *
+     * @return true     - if clear success
+     * @return false    - if clear fails
      */
-    bool ClearBuffers();
+    bool ClearReadBuffer();
 
     /**
      * @brief Writes an array of binary data into COM port

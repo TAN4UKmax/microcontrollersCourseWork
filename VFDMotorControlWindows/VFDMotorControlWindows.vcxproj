@@ -130,14 +130,17 @@
     <ClCompile Include="COMPort.cpp" />
     <ClCompile Include="COMPortFake.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ModbusRTUclient.cpp" />
+    <ClCompile Include="ModbusRTUClient.cpp" />
     <ClCompile Include="VFD.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="COMPort.h" />
     <ClInclude Include="COMPortFake.h" />
-    <ClInclude Include="ModbusRTUclient.h" />
+    <ClInclude Include="ModbusRTUClient.h" />
     <ClInclude Include="VFD.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="coords.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,0 +1,2 @@
+Time	FrequencyCommand	OutFrequency	OutCurrent	OutVoltage
+29.856	-50	-49.9	7.5	213.6

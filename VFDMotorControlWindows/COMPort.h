@@ -14,44 +14,89 @@
 
 #include <Windows.h>
 
- //#define NDEBUG
-
 class COMPort
 {
 private:
-	HANDLE          hCOM;       // COM port handler structure
-	DWORD           error;      // variable that receives a mask indicating the type of port error
-	bool            connected;  // current status of COM port
+	HANDLE          hCOM;           // COM port handler structure
+	DWORD           error;          // variable that receives a mask indicating the type of port error
 
-	char            name[9];    // COM port name ("COM3" by default)
-	unsigned long   baud;       // baudrate of communication (9600 by default)
-	char            parity;     // parity parameter ('N' by default)
-	unsigned char   dataBit;    // number of bits of data (8 by default)
-	unsigned char   stopBit;    // number of stop bits (1 by default)
+	char            name[9];	    // COM port name ("COM3" by default)
+	unsigned long   baud;           // baudrate of communication (9600 by default)
+	unsigned char   dataBit;        // number of bits of data (8 by default)
+	char            parity;         // parity parameter ('N' by default)
+	unsigned char   stopBit;        // number of stop bits (1 by default)
+
+	unsigned long	tInterval;      // interval timeout for read operation
+	unsigned long	tMultiplier;    // multiplier timeout for read operation
+	unsigned long	tConstant;      // constant timeout for read operation
 
 	/**
-	 * @brief Writes parameters into DCB block if port is open
+	 * @brief Write parameters into DCB internal structure
 	 *
 	 * @return true     - if success
 	 * @return false    - if fails
 	 */
 	bool WriteDCB();
+
+    /**
+     * @brief Write read timeouts into internal structure
+     * 
+     * @return true     - if success
+     * @return false    - if fails
+     */
+	bool TimeoutsSetup();
 public:
 	/**
 	 * @brief Construct a new COMPort object
 	 *
 	 * @param name      - COM port name ("COM3" by default)
 	 * @param baud      - baudrate of communication (9600 by default)
-	 * @param parity    - parity parameter ('N' or NOPARITY by default)
 	 * @param dataBit   - number of bits of data (8 by default)
+	 * @param parity    - parity parameter ('N' or NOPARITY by default)
 	 * @param stopBit   - number of stop bits (1 or ONESTOPBIT by default)
 	 */
 	COMPort(
 		const char* name = "COM3",
 		unsigned long baud = 9600,
-		char parity = 'N',
 		unsigned char dataBit = 8,
+		char parity = 'N',
 		unsigned char stopBit = 1);
+
+	/**
+	 * @brief Copy constructor for COMPort.
+     * Is necessary for correct handle transfer and share resourse.
+     * This constructor implements move instead of copy to prevent multiple access to port
+	 * 
+	 * @param other     - COMPort object that will be copied into current instance
+	 */
+	COMPort(COMPort& other);
+
+	/**
+	 * @brief Copy operaror for COMPort.
+     * Is necessary for correct handle transfer and share resourse.
+     * This operator implements move instead of copy to prevent multiple access to port
+	 * 
+	 * @param other     - COMPort object that will be copied into current instance
+	 * @return COMPort& - reference to current instance of class
+	 */
+	COMPort& operator =(COMPort& other);
+
+	/**
+	 * @brief Move constructor for COMPort.
+     * Is necessary for correct handle transfer and share resourse.
+	 * 
+	 * @param other     - COMPort object that will be moved into current instance
+	 */
+	COMPort(COMPort&& other) noexcept;
+
+	/**
+	 * @brief Move operator for COMPort.
+     * Is necessary for correct handle transfer and share resourse.
+	 * 
+	 * @param other     - COMPort object that will be moved into current instance
+	 * @return COMPort& - reference to current instance of class
+	 */
+	COMPort& operator =(COMPort&& other) noexcept;
 
 	/**
 	 * @brief Destroy the COMPort object (closes the file handle)
@@ -62,16 +107,24 @@ public:
 	/**
 	 * @brief Open COM port communication
 	 *
-	 * @return true  - if open success
-	 * @return false - if open fails
+	 * @return true		- if open success
+	 * @return false	- if open fails
 	 */
 	bool Open();
 
 	/**
+	 * @brief Check current state of COM port
+	 *
+	 * @return true     - Port is opened
+	 * @return false    - Port is closed
+	 */
+	bool isOpen();
+
+	/**
 	 * @brief Close COM port communication
 	 *
-	 * @return true - if close success
-	 * @return false -if close fails
+	 * @return true		- if close success
+	 * @return false	- if close fails
 	 */
 	bool Close();
 
@@ -79,16 +132,16 @@ public:
 	 * @brief Set the Config of port, allows to change COM port configuration after creating an object
 	 *
 	 * @param baud      - baudrate of communication (9600 by default)
-	 * @param parity    - parity parameter ('N' or NOPARITY by default)
 	 * @param dataBit   - number of bits of data (8 by default)
+	 * @param parity    - parity parameter ('N' or NOPARITY by default)
 	 * @param stopBit   - number of stop bits (1 or ONESTOPBIT by default)
 	 * @return true     - if port parameters changed
 	 * @return false    - if change fails
 	 */
 	bool SetConfig(
 		unsigned long baud = 9600,
-		char parity = 'N',
 		unsigned char dataBit = 8,
+		char parity = 'N',
 		unsigned char stopBit = 1);
 
 	/**
@@ -117,12 +170,12 @@ public:
 		unsigned long constant = 1);
 
 	/**
-	 * @brief Clears input and output buffer of port and terminates all current read and write operations
+	 * @brief Clears input buffer of port and terminates all current read operations
 	 *
-	 * @return true - if clear success
-	 * @return false -if clear fails
+	 * @return true		- if clear success
+	 * @return false	- if clear fails
 	 */
-	bool ClearBuffers();
+	bool ClearReadBuffer();
 
 	/**
 	 * @brief Writes an array of binary data into COM port

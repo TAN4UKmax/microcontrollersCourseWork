@@ -24,10 +24,10 @@
     <ClCompile Include="VFD.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ModbusRTUclient.cpp">
+    <ClCompile Include="COMPortFake.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="COMPortFake.cpp">
+    <ClCompile Include="ModbusRTUClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -38,11 +38,14 @@
     <ClInclude Include="VFD.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ModbusRTUclient.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="COMPortFake.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ModbusRTUClient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="coords.txt" />
   </ItemGroup>
 </Project>
