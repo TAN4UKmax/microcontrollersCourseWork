@@ -57,7 +57,7 @@ public:
 	/**
 	 * @brief Construct a new VFD object. Set device communication parameters
 	 *
-	 * @param mb - ModbusRTUClient class instance with its parameters
+	 * @param mb[in] - ModbusRTUClient class instance with its parameters
 	 */
 	VFD(ModbusRTUClient mb = { 1, {"COM3", 9600, 8, 'E', 1} });
 
@@ -65,7 +65,7 @@ public:
 	// * @brief Copy constructor for VFD.
 	// * Is necessary for correct handle transfers and share resourse.
 	// *
-	// * @param other - VFD object that will be copied into current instance
+	// * @param other[in] - VFD object that will be copied into current instance
 	// */
 	//VFD(VFD& other);
 
@@ -73,7 +73,7 @@ public:
 	// * @brief Copy operaror for VFD.
 	// * Is necessary for correct handle transfers and share resourse.
 	// *
-	// * @param other - VFD object that will be copied into current instance
+	// * @param other[in] - VFD object that will be copied into current instance
 	// * @return VFD& - reference to current instance of class
 	// */
 	//VFD& operator =(VFD& other);
@@ -82,7 +82,7 @@ public:
 	// * @brief Move constructor for VFD.
 	// * Is necessary for correct handle transfers and share resourse.
 	// *
-	// * @param other - VFD object that will be moved into current instance
+	// * @param other[in] - VFD object that will be moved into current instance
 	// */
 	//VFD(VFD&& other) noexcept;
 
@@ -90,7 +90,7 @@ public:
 	// * @brief Move operator for VFD.
 	// * Is necessary for correct handle transfers and share resourse.
 	// *
-	// * @param other - VFD object that will be moved into current instance
+	// * @param other[in] - VFD object that will be moved into current instance
 	// * @return VFD& - reference to current instance of class
 	// */
 	//VFD& operator =(VFD&& other) noexcept;
@@ -106,35 +106,33 @@ public:
 	 * The direction attribute accepts several parameters:
 	 * 0 - no change, 1 - forward, 2 - reverse, 3 - change
      * 
-     * @param direction     - Set rotation direction (default: 0 - no change)
-     * @param accDecTime    - Set acceleration time (VFD-B_manual_rus.pdf, p.126) default: 1
+     * @param direction[in]	- Set rotation direction (default: 0 - no change)
      * @return true         - Run success
      * @return false        - Run fail
      */
-	bool Run(unsigned short direction = 0, unsigned short accTime = 1);
+	bool Run(unsigned short direction = 0);
 
     /**
      * @brief Stop motor with specified deceleration
      * 
-     * @param decTime   - Set deceleration time (VFD-B_manual_rus.pdf, p.126) default: 1
      * @return true     - Stop success
      * @return false    - Stop fail
      */
-	bool Stop(unsigned short decTime = 1);
+	bool Stop();
 
     /**
      * @brief Run motor to specified frequency with specified
 	 * acceleration of deceleration time. This method uses maxFrequency (01-00)
 	 * parameter which is 50Hz by default. If you set another value in your VFD,
-	 * read that value by calling ReadMaxFrequency(); one time
+	 * read that value by calling ReadMaxFrequency() one time
 	 * before using this method
      * 
-     * @param curFreq       - Current motor frequency
-     * @param newFreq       - New motor frequency
-     * @param changeTime    - Acceleration or deceleraiton time for which the
+     * @param curFreq[in]       - Current motor frequency
+     * @param newFreq[in]       - New motor frequency
+     * @param changeTime[in]	- Acceleration or deceleraiton time for which the
 	 * specified frequency will be reached
-     * @return true         - Set new frequency and time success
-     * @return false        - Set new frequency and time fail
+     * @return true				- Set new frequency and time success
+     * @return false			- Set new frequency and time fail
      */
 	bool ChangeFrequency(
 		double curFreq = 0,
@@ -161,13 +159,6 @@ public:
      */
 	bool GetVFDTemperature(double* temp);
 
-	/**
-	 * @brief Get the maximum output frequency of motor (0x0100 VFD parameter)
-	 *
-	 * @return true     - Read maximum output frequency success
-	 * @return false    - Read maximum output frequency fail
-	 */
-
     /**
      * @brief Get the maximum output frequency of motor (0x0100 VFD parameter)
      * Maximum frequency value vill be stored in internal field of class for
@@ -183,7 +174,7 @@ public:
     /**
      * @brief Set the Frequency of motor
      * 
-     * @param freq      - Frequency command to set
+     * @param freq[in]	- Frequency command to set
      * @return true     - Set frequency success
      * @return false    - Set frequency fail
      */
@@ -192,7 +183,7 @@ public:
     /**
      * @brief Set the Acceleration Time of motor
      * 
-     * @param time      - Time to set
+     * @param time[in]	- Time to set
      * @return true     - Set time success
      * @return false    - Set time fail
      */
@@ -201,7 +192,7 @@ public:
     /**
      * @brief Set the Deceleration Time of motor
      * 
-     * @param time      - Time to set
+     * @param time[in]	- Time to set
      * @return true     - Set time success
      * @return false    - Set time fail
      */
@@ -214,7 +205,7 @@ public:
      * motor will stop.
      * Set 0 to switch off watchdog timer
      * 
-     * @param time      - Watchdog time to set
+     * @param time[in]	- Watchdog time to set
      * @return true     - Set watchdog success
      * @return false    - Set time fail
      */

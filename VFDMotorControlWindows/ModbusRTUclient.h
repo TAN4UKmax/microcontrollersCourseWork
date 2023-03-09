@@ -12,7 +12,7 @@
 #ifndef MODBUSRTUCLIENT_H
 #define MODBUSRTUCLIENT_H
 
-#define FAKE_PORT // uncomment it for use fake port and test modbus
+//#define FAKE_PORT // uncomment it for use fake port and test modbus
 
 #ifdef FAKE_PORT
 #include "COMPortFake.h"
@@ -29,7 +29,7 @@ private:
 	COMPort         COM;        // Instance of COM port class
 #endif
 	unsigned char   devAddress; // Server device address
-	// Number of repeated transmit attempts when transmit fails (default: 1)
+	// Number of repeated transmit attempts when transmit fails (default: 5)
 	unsigned char   transmitAttempts;
 	unsigned char   wBuf[256];  // Buffer for write frame
 	unsigned char   rBuf[256];  // Buffer for read frame
@@ -50,18 +50,18 @@ private:
 	 *   значение. При передачи значения CRC в сообщении, старшие и младшие байты значения CRC должны
 	 *   меняться, то есть сначала будет передан младший байт.
 	 *
-	 * @param data          - a pointer to the message buffer
-	 * @param length        - the message buffer length
+	 * @param data[in]		- a pointer to the message buffer
+	 * @param length[in]	- the message buffer length
 	 * @return unsigned int - calculated CRC
 	 */
 	unsigned int CRC16(unsigned char* data, unsigned char length);
 
 	/**
-	 * @brief Checks CRC of response message
+	 * @brief Check CRC of response message
 	 *
-	 * @param pduBytes  - PDU size in bytes
-	 * @return true     - If frame CRC check success
-	 * @return false    - If CRC check mismatch
+	 * @param pduBytes[in]	- PDU size in bytes
+	 * @return true			- If frame CRC check success
+	 * @return false		- If CRC check mismatch
 	 */
 	bool responseCRCCheck(unsigned char pduBytes);
 
@@ -74,10 +74,10 @@ private:
 	 * Check if exception occurred and prints it
 	 * Returns result if frame is correct
 	 *
-	 * @param wPDUBytes - Number of PDU bytes to write
-	 * @param rPDUBytes - Number of PDU bytes to read
-	 * @return true     - If transfer success
-	 * @return false    - If some error occurred
+	 * @param wPDUBytes[in]	- Number of PDU bytes to write
+	 * @param rPDUBytes[in]	- Number of PDU bytes to read
+	 * @return true			- If transfer success
+	 * @return false		- If some error occurred
 	 */
 	bool Transfer(unsigned char wPDUBytes, unsigned char rPDUBytes);
 
@@ -92,8 +92,8 @@ public:
 	 * @brief Construct a new ModbusRTUClient object with fake COM port object for testing.
 	 * Setup port communication parameters
 	 *
-	 * @param devAddress    - Modbus server address. (Range: 0-247, Default: 1)
-	 * @param com           - COMPortFake class instance with its parameters
+	 * @param devAddress[in]	- Modbus server address. (Range: 0-247, Default: 1)
+	 * @param com[in]           - COMPortFake class instance with its parameters
 	 * (Defaults according to: Modbus_over_serial_line_V1_02.pdf)
 	 */
 	ModbusRTUClient(unsigned char devAddress = 1,
@@ -103,8 +103,8 @@ public:
 	 * @brief Construct a new ModbusRTUClient object.
 	 * Setup port communication parameters
 	 *
-	 * @param devAddress    - Modbus server address. (Range: 0-247, Default: 1)
-	 * @param com           - COMPort class instance with its parameters
+	 * @param devAddress[in]    - Modbus server address. (Range: 0-247, Default: 1)
+	 * @param com[in]           - COMPort class instance with its parameters
 	 * (Defaults according to: Modbus_over_serial_line_V1_02.pdf)
 	 */
 	ModbusRTUClient(unsigned char devAddress = 1,
@@ -115,7 +115,7 @@ public:
 	 * @brief Copy constructor for ModbusRTUClient.
 	 * Is necessary for correct handle transfers and share resourse.
 	 *
-	 * @param other     - ModbusRTUClient object that will be copied into current instance
+	 * @param other[in]     - ModbusRTUClient object that will be copied into current instance
 	 */
 	ModbusRTUClient(ModbusRTUClient& other);
 
@@ -123,7 +123,7 @@ public:
 	// * @brief Copy operaror for ModbusRTUClient.
 	// * Is necessary for correct handle transfers and share resourse.
 	// *
-	// * @param other             - ModbusRTUClient object that will be copied into current instance
+	// * @param other[in]         - ModbusRTUClient object that will be copied into current instance
 	// * @return ModbusRTUClient& - reference to current instance of class
 	// */
 	//ModbusRTUClient& operator =(ModbusRTUClient& other);
@@ -132,7 +132,7 @@ public:
 	 * @brief Move constructor for ModbusRTUClient.
 	 * Is necessary for correct handle transfers and share resourse.
 	 *
-	 * @param other     - ModbusRTUClient object that will be moved into current instance
+	 * @param other[in]     - ModbusRTUClient object that will be moved into current instance
 	 */
 	ModbusRTUClient(ModbusRTUClient&& other) noexcept;
 
@@ -140,7 +140,7 @@ public:
 	// * @brief Move operator for ModbusRTUClient.
 	// * Is necessary for correct handle transfers and share resourse.
 	// *
-	// * @param other             - ModbusRTUClient object that will be moved into current instance
+	// * @param other[in]         - ModbusRTUClient object that will be moved into current instance
 	// * @return ModbusRTUClient& - reference to current instance of class
 	// */
 	//ModbusRTUClient& operator =(ModbusRTUClient&& other) noexcept;
@@ -156,11 +156,11 @@ public:
 	 * Read the contents of a contiguous block of holding registers in a remote device.
 	 * ILLEGAL DATA ADDRESS error occurs when (regAddress + nRegisters > 0xFFFF).
 	 *
-	 * @param startAddress  - Starting Address (0x0000 to 0xFFFF)
-	 * @param nRegisters    - Quantity of Registers (1 to 125 (0x7D))
-	 * @param buf           - Buffer to store the read result as 16-bit HEX values.
-	 * @return true         - If read success
-	 * @return false        - If some error occurred
+	 * @param startAddress[in]	- Starting Address (0x0000 to 0xFFFF)
+	 * @param nRegisters[in]    - Quantity of Registers (1 to 125 (0x7D))
+	 * @param buf[out]          - Buffer to store the read result as 16-bit HEX values.
+	 * @return true				- If read success
+	 * @return false			- If some error occurred
 	 */
 	bool ReadHoldingRegisters(
 		unsigned short startAddress,
@@ -171,10 +171,10 @@ public:
 	 * @brief Write Single Register (0x06 Function code).
 	 * Write a single holding register in a remote device
 	 *
-	 * @param regAddress    - Register Address (0x0000 to 0xFFFF)
-	 * @param regValue      - Register Value (0x0000 to 0xFFFF)
-	 * @return true         - If write success
-	 * @return false        - If some error occurred
+	 * @param regAddress[in]	- Register Address (0x0000 to 0xFFFF)
+	 * @param regValue[in]      - Register Value (0x0000 to 0xFFFF)
+	 * @return true				- If write success
+	 * @return false			- If some error occurred
 	 */
 	bool WriteSingleRegister(
 		unsigned short regAddress,
@@ -186,7 +186,7 @@ public:
 	 * Value (2) for example means that after first transmit fail
 	 * the program will try transmitting frame one more time.
 	 *
-	 * @param attempts - number of repeated transmit attempts
+	 * @param attempts[in] - number of repeated transmit attempts
 	 */
 	void SetNumberOfTransmitAttempts(unsigned char attempts = 1);
 };

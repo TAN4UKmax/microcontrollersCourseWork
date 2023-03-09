@@ -1,28 +1,24 @@
 #include "COMPort.h"
-#include <cstring> // for string data operations
+#include <cstring>	// for string data operations
 
 //#define NDEBUG
 #include <cassert>
 #ifndef NDEBUG
-#include <cstdio> // for debug printing
-#include <ctime> // for measuring transfer operations time
+#include <cstdio>	// for debug printing
+#include <ctime>	// for measuring transfer operations time
 #endif // NDEBUG
 
 bool COMPort::WriteDCB()
 {
 	DCB dcb = { 0 };
-
 	error = GetLastError();
-
 	assert(("COMPort::WriteDCB() Some error in port", !error));
 	if (error != 0) return false;
-
 	if (!GetCommState(hCOM, &dcb))
 	{
 		assert(("COMPort::WriteDCB() Read DCB error", 0));
 		return false;
 	}
-
 #ifndef NDEBUG
 	printf("COMPort::WriteDCB() Current DCB params:\n");
 	printf("- DCBlength: %lu\n", dcb.DCBlength);
@@ -102,13 +98,11 @@ bool COMPort::WriteDCB()
 	printf("- EvtChar: %lu\n", dcb.EvtChar);
 	printf("- wReserved1: %lu\n", dcb.wReserved1);
 #endif // NDEBUG
-
 	if (!SetCommState(hCOM, &dcb))
 	{
 		assert(("COMPort::WriteDCB() Write DCB error", 0));
 		return false;
 	}
-
 #ifndef NDEBUG
 	printf("COMPort::WriteDCB() Write DCB success\n");
 #endif // NDEBUG
@@ -120,12 +114,11 @@ bool COMPort::TimeoutsSetup()
 	COMMTIMEOUTS timeouts;
 	if (!GetCommTimeouts(hCOM, &timeouts))
 	{
-		assert(("COMPort::SetReadTimeouts() Read timeouts error", 0));
+		assert(("COMPort::TimeoutsSetup() Read timeouts error", 0));
 		return false;
 	}
-
 #ifndef NDEBUG
-	printf("COMPort::SetReadTimeouts() Current timeouts:\n");
+	printf("COMPort::TimeoutsSetup() Current timeouts:\n");
 	printf("- ReadIntervalTimeout: %lu\n", timeouts.ReadIntervalTimeout);
 	printf("- ReadTotalTimeoutMultiplier: %lu\n", timeouts.ReadTotalTimeoutMultiplier);
 	printf("- ReadTotalTimeoutConstant: %lu\n", timeouts.ReadTotalTimeoutConstant);
@@ -138,21 +131,20 @@ bool COMPort::TimeoutsSetup()
 	timeouts.ReadTotalTimeoutConstant = tConstant;
 
 #ifndef NDEBUG
-	printf("COMPort::SetReadTimeouts() New timeouts:\n");
+	printf("COMPort::TimeoutsSetup() New timeouts:\n");
 	printf("- ReadIntervalTimeout: %lu\n", timeouts.ReadIntervalTimeout);
 	printf("- ReadTotalTimeoutMultiplier: %lu\n", timeouts.ReadTotalTimeoutMultiplier);
 	printf("- ReadTotalTimeoutConstant: %lu\n", timeouts.ReadTotalTimeoutConstant);
 	printf("- WriteTotalTimeoutMultiplier: %lu\n", timeouts.WriteTotalTimeoutMultiplier);
 	printf("- WriteTotalTimeoutConstant: %lu\n", timeouts.WriteTotalTimeoutConstant);
 #endif // NDEBUG
-
 	if (!SetCommTimeouts(hCOM, &timeouts))
 	{
-		assert(("COMPort::SetReadTimeouts() Set timeouts error", 0));
+		assert(("COMPort::TimeoutsSetup() Set timeouts error", 0));
 		return false;
 	}
 #ifndef NDEBUG
-	printf("COMPort::SetReadTimeouts() Timeouts is set\n");
+	printf("COMPort::TimeoutsSetup() Timeouts is set\n");
 #endif // NDEBUG
 	return true;
 }
@@ -444,7 +436,6 @@ long COMPort::Write(unsigned char* buf, unsigned char length)
 	printf("\n");
 	clock_t start_time = clock();
 #endif // NDEBUG
-
 	DWORD n_bytes = 0;
 	bool writeStatus = WriteFile(hCOM, buf, length, &n_bytes, NULL);
 	// Check errors
@@ -454,7 +445,6 @@ long COMPort::Write(unsigned char* buf, unsigned char length)
 		assert(("COMPort::Write() Connection to port lost", 0));
 		return false;
 	}
-
 	if (writeStatus)
 	{
 #ifndef NDEBUG
@@ -487,7 +477,6 @@ long COMPort::Read(unsigned char* buf, unsigned char length)
 		assert(("COMPort::Read() Connection to port lost", 0));
 		return false;
 	}
-
 	if (readStatus)
 	{
 #ifndef NDEBUG

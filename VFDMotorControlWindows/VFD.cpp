@@ -1,7 +1,7 @@
 #include "VFD.h"
 #include <cmath> // for calculations
 
-//#define NDEBUG
+#define NDEBUG
 #include <cassert>
 #ifndef NDEBUG
 #include <cstdio>   // for debug printing
@@ -49,23 +49,17 @@ VFD::~VFD()
 #endif // NDEBUG
 }
 
-bool VFD::Run(unsigned short direction /* = 0 */, unsigned short accTime /* = 1 */)
+bool VFD::Run(unsigned short direction /* = 0 */)
 {
 #ifndef NDEBUG
 	clock_t start_time = clock();
 #endif // NDEBUG
 	if (direction > 3) direction = 0; // Prevent invalid direction parameter set
-	// Prevent invalid accTime parameter set
-	if (accTime < 1) accTime = 1;
-	if (accTime > 4) accTime = 4;
-	accTime--;
 	unsigned short command = 0;
 	// Set start bit
 	command |= 1 << 1;
 	// Set direction bits
 	command |= direction << 4;
-	// Set acceleration time
-	command |= accTime << 6;
 	if (!MB.WriteSingleRegister(0x2000, command))
 	{
 		assert(("VFD::Run() Run error", 0));
@@ -78,25 +72,21 @@ bool VFD::Run(unsigned short direction /* = 0 */, unsigned short accTime /* = 1 
 	return true;
 }
 
-bool VFD::Stop(unsigned short decTime /* = 1 */)
+bool VFD::Stop()
 {
 #ifndef NDEBUG
 	clock_t start_time = clock();
 #endif // NDEBUG
 	// Prevent invalid accTime parameter set
-	if (decTime < 1) decTime = 1;
-	if (decTime > 4) decTime = 4;
-	decTime--;
 	unsigned short command = 0;
 	// Set stop bit
 	command |= 1 << 0;
-	// Set deceleration time
-	command |= decTime << 6;
 	if (!MB.WriteSingleRegister(0x2000, command))
 	{
 		assert(("VFD::Run() Stop error", 0));
 		return false;
 	}
+	if (!SetWatchdog(0)) return false;
 #ifndef NDEBUG
 	printf("VFD::Stop() Success in %ldms\n",
 		(clock() - start_time));

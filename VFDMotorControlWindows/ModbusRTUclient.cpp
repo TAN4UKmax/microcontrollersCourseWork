@@ -1,6 +1,6 @@
 #include "ModbusRTUclient.h"
 
-//#define NDEBUG
+#define NDEBUG
 #include <cassert>
 #ifndef NDEBUG
 #include <cstdio>   // for debug printing
@@ -45,13 +45,12 @@ bool ModbusRTUClient::Transfer(unsigned char wPDUBytes, unsigned char rPDUBytes)
 #ifndef NDEBUG
 	clock_t start_time = clock();
 #endif // NDEBUG
-
 	wBuf[0] = devAddress;				// Server device address
 	// Calculate CRC
 	unsigned short wCRC = CRC16(wBuf, (wPDUBytes + 1));
 	wBuf[wPDUBytes + 1] = wCRC & 0xFF;	// CRC Lo
 	wBuf[wPDUBytes + 2] = wCRC >> 8;	// CRC Hi
-	// Transmit request
+	// Transfer frame
 	for (unsigned int attempt = 1; attempt <= transmitAttempts; attempt++)
 	{
 		// Write buffer to port

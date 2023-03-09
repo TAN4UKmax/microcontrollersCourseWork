@@ -129,6 +129,7 @@
   <ItemGroup>
     <ClCompile Include="COMPort.cpp" />
     <ClCompile Include="COMPortFake.cpp" />
+    <ClCompile Include="FileHandle.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModbusRTUClient.cpp" />
     <ClCompile Include="VFD.cpp" />
@@ -136,6 +137,7 @@
   <ItemGroup>
     <ClInclude Include="COMPort.h" />
     <ClInclude Include="COMPortFake.h" />
+    <ClInclude Include="main.h" />
     <ClInclude Include="ModbusRTUClient.h" />
     <ClInclude Include="VFD.h" />
   </ItemGroup>

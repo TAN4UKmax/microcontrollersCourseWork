@@ -43,20 +43,20 @@ private:
      *   значение. ѕри передачи значени€ CRC в сообщении, старшие и младшие байты значени€ CRC должны
      *   мен€тьс€, то есть сначала будет передан младший байт.
      *
-     * @param data          - a pointer to the message buffer
-     * @param length        - the message buffer length
-     * @return unsigned int - calculated CRC
+     * @param data[in]          - a pointer to the message buffer
+     * @param length[in]        - the message buffer length
+     * @return unsigned int     - calculated CRC
      */
     unsigned int CRC16(unsigned char* data, unsigned char length);
 public:
     /**
      * @brief (It will work with any configuration in COMPortFake) Construct a new COMPortFake object
      * 
-     * @param name      - COM port name ("COM3" by default)
-     * @param baud      - baudrate of communication (9600 by default)
-     * @param dataBit   - number of bits of data (8 by default)
-     * @param parity    - parity parameter ('N' or NOPARITY by default)
-     * @param stopBit   - number of stop bits (1 or ONESTOPBIT by default)
+     * @param name[in]      - COM port name ("COM3" by default)
+     * @param baud[in]      - baudrate of communication (9600 by default)
+     * @param dataBit[in]   - number of bits of data (8 by default)
+     * @param parity[in]    - parity parameter ('N' or NOPARITY by default)
+     * @param stopBit[in]   - number of stop bits (1 or ONESTOPBIT by default)
      */
     COMPortFake(
         const char* name = "COM3",
@@ -98,12 +98,12 @@ public:
     /**
      * @brief Set the Config of port, allows to change COM port configuration after creating an object
      * 
-     * @param baud      - baudrate of communication (9600 by default)
-     * @param dataBit   - number of bits of data (8 by default)
-     * @param parity    - parity parameter ('N' or NOPARITY by default)
-     * @param stopBit   - number of stop bits (1 or ONESTOPBIT by default)
-     * @return true     - if port parameters changed
-     * @return false    - if change fails
+     * @param baud[in]      - baudrate of communication (9600 by default)
+     * @param dataBit[in]   - number of bits of data (8 by default)
+     * @param parity[in]    - parity parameter ('N' or NOPARITY by default)
+     * @param stopBit[in]   - number of stop bits (1 or ONESTOPBIT by default)
+     * @return true[in]     - if port parameters changed
+     * @return false        - if change fails
      */
     bool SetConfig(
         unsigned long baud = 9600,
@@ -125,11 +125,11 @@ public:
      * ReadFile waits until a byte arrives and then returns immediately.
      * If no bytes arrive within the time specified by ReadTotalTimeoutConstant,
      * ReadFile times out.
-     * @param interval      - The maximum time allowed to elapse before the arrival of the next byte on the communications line, in milliseconds
-     * @param multiplier    - The multiplier used to calculate the total time-out period for read operations, in milliseconds.
-     * @param constant      - A constant used to calculate the total time-out period for read operations, in milliseconds.
-     * @return true         - if timeouts updated
-     * @return false        - if timeouts update fails
+     * @param interval[in]      - The maximum time allowed to elapse before the arrival of the next byte on the communications line, in milliseconds
+     * @param multiplier[in]    - The multiplier used to calculate the total time-out period for read operations, in milliseconds.
+     * @param constant[in]      - A constant used to calculate the total time-out period for read operations, in milliseconds.
+     * @return true             - if timeouts updated
+     * @return false            - if timeouts update fails
      */
     bool SetReadTimeouts(
         unsigned long interval = 0,
@@ -147,18 +147,18 @@ public:
     /**
      * @brief Writes an array of binary data into COM port
      * 
-     * @param buf       - pointer to data buffer
-     * @param length    - buffer length
-     * @return long     - number of written bytes or -1 if error
+     * @param buf[in]       - pointer to data buffer
+     * @param length[in]    - buffer length
+     * @return long         - number of written bytes or -1 if error
      */
     long Write(unsigned char* buf, unsigned char length);
 
     /**
      * @brief Reads an array of binary data from COM port buffer
      * 
-     * @param buf       - pointer to data buffer
-     * @param length    - buffer length
-     * @return long     - number of read bytes or -1 if error
+     * @param buf[out]      - pointer to data buffer
+     * @param length[in]    - buffer length
+     * @return long         - number of read bytes or -1 if error
      */
     long Read(unsigned char* buf, unsigned char length);
 };
