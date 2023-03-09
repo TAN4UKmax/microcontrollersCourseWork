@@ -12,7 +12,7 @@
 #ifndef MODBUSRTUCLIENT_H
 #define MODBUSRTUCLIENT_H
 
-//#define FAKE_PORT // uncomment it for use fake port and test modbus
+#define FAKE_PORT // uncomment it for use fake port and test modbus
 
 #ifdef FAKE_PORT
 #include "COMPortFake.h"
