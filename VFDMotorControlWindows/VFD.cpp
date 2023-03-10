@@ -1,7 +1,7 @@
 #include "VFD.h"
 #include <cmath> // for calculations
 
-#define NDEBUG
+//#define NDEBUG
 #include <cassert>
 #ifndef NDEBUG
 #include <cstdio>   // for debug printing

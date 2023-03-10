@@ -48,7 +48,7 @@ specified in the first column.)
  *
  */
 
-// Includes ///////////////////////////////////////////////////////////////////
+ // Includes ///////////////////////////////////////////////////////////////////
 
 #include "main.h"
 
@@ -133,10 +133,11 @@ int main(int argc, char* argv[])
 	if (argc <= 1) // if run without arguments
 	{
 		printf("This program requires input arguments.");
-		CMD.help = true;
+		PrintHelp();
+		return 0; // after help print program doesn't accept any commands
 	}
 	// Print help text ////////////////////////////////////////////////////////
-	PrintHelp();
+	if (CMD.help) PrintHelp();
 
 	VFD motor({ 1, { portName, 9600, 8, 'E', 1 } }); // VFD class instance
 
@@ -309,44 +310,41 @@ void HandleCLIArguments(int argc, char* argv[])
 
 void PrintHelp()
 {
-	if (CMD.help)
-	{
-		printf("\nHelp.\n");
-		printf("This program can control Delta VFD-B.\n");
-		printf("Input commandline arguments:\n");
-		printf("-h | --help\t\t\tDisplay this help message\n");
-		printf("--port <COMx>\t\t\tSpecify serial port (COM3 default) (--port COM3)\n");
-		printf("--file <text_file>\t\tRead a file with frequency and time parameters table. (--file coords.txt)\n");
-		printf("\t\t\t\tAnd run motor according to the table.\n");
-		printf("Text file should contain table with times and frequencies and should look like this:\n");
-		printf("Time\tFrequency\n");
-		printf("0\t0\n");
-		printf("10\t20\n");
-		printf("20\t30\n");
-		printf("30\t10\n");
-		printf("40\t-10\n");
-		printf("50\t0\n");
-		printf("(The first column specifies the time to be set.\n");
-		printf("The second column specifies the frequency that will be reached for the time,\n");
-		printf("specified in the first column.)\n");
-		printf("--get <parameter>\t\tRead one of the following motor parameters: (--get MotorSpeed)\n");
-		printf("\t\t\t\t<FrequencyCommand>\n");
-		printf("\t\t\t\t<OutFrequency>\n");
-		printf("\t\t\t\t<OutCurrent>\n");
-		printf("\t\t\t\t<DCVoltage>\n");
-		printf("\t\t\t\t<OutVoltage>\n");
-		printf("\t\t\t\t<PowerFactor>\n");
-		printf("\t\t\t\t<OutTorque>\n");
-		printf("\t\t\t\t<MotorSpeed>\n");
-		printf("\t\t\t\t<OutPower>\n");
-		printf("\t\t\t\t<VFDTemperature>\n");
-		printf("--set <parameter> <value>\tSet one of the folloving motor parameters: (--set Frequency 45.5)\n");
-		printf("\t\t\t\t<Frequency>\n");
-		printf("\t\t\t\t<AccelerationTime>\n");
-		printf("\t\t\t\t<DecelerationTime>\n");
-		printf("--run <n|f|r|c>\t\t\tRun motor with direction set (no change, forvard, reverse, change) (--run r)\n");
-		printf("--stop\t\t\t\tStop motor\n\n");
-	}
+	printf("\nHelp.\n");
+	printf("This program can control Delta VFD-B.\n");
+	printf("Input commandline arguments:\n");
+	printf("-h | --help\t\t\tDisplay this help message\n");
+	printf("--port <COMx>\t\t\tSpecify serial port (COM3 default) (--port COM3)\n");
+	printf("--file <text_file>\t\tRead a file with frequency and time parameters table. (--file coords.txt)\n");
+	printf("\t\t\t\tAnd run motor according to the table.\n");
+	printf("Text file should contain table with times and frequencies and should look like this:\n");
+	printf("Time\tFrequency\n");
+	printf("0\t0\n");
+	printf("10\t20\n");
+	printf("20\t30\n");
+	printf("30\t10\n");
+	printf("40\t-10\n");
+	printf("50\t0\n");
+	printf("(The first column specifies the time to be set.\n");
+	printf("The second column specifies the frequency that will be reached for the time,\n");
+	printf("specified in the first column.)\n");
+	printf("--get <parameter>\t\tRead one of the following motor parameters: (--get MotorSpeed)\n");
+	printf("\t\t\t\t<FrequencyCommand>\n");
+	printf("\t\t\t\t<OutFrequency>\n");
+	printf("\t\t\t\t<OutCurrent>\n");
+	printf("\t\t\t\t<DCVoltage>\n");
+	printf("\t\t\t\t<OutVoltage>\n");
+	printf("\t\t\t\t<PowerFactor>\n");
+	printf("\t\t\t\t<OutTorque>\n");
+	printf("\t\t\t\t<MotorSpeed>\n");
+	printf("\t\t\t\t<OutPower>\n");
+	printf("\t\t\t\t<VFDTemperature>\n");
+	printf("--set <parameter> <value>\tSet one of the folloving motor parameters: (--set Frequency 45.5)\n");
+	printf("\t\t\t\t<Frequency>\n");
+	printf("\t\t\t\t<AccelerationTime>\n");
+	printf("\t\t\t\t<DecelerationTime>\n");
+	printf("--run <n|f|r|c>\t\t\tRun motor with direction set (no change, forvard, reverse, change) (--run r)\n");
+	printf("--stop\t\t\t\tStop motor\n\n");
 }
 
 bool GetMotorParameters(VFD& motor)

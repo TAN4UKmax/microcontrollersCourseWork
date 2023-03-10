@@ -1,15 +1,12 @@
 #include "COMPortFake.h"
 #include <cstring> // for string data operations
 
-#define NDEBUG
+//#define NDEBUG
 #include <cassert>
 #ifndef NDEBUG
 #include <cstdio> // for debug printing
 #include <ctime> // for measuring transfer operations time
 #endif // NDEBUG
-
-// Тут написать ответ на запрос читать 15 регистров, запрос чтения температуры, 
-// все запросы записи автоматически успешны и будет норм
 
 // Test requests and responses (ADU with server address but without CRC) //////
 unsigned char Write_req[] = { 0x01, 0x06 };

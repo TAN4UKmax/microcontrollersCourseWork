@@ -1,6 +1,6 @@
 #include "ModbusRTUclient.h"
 
-#define NDEBUG
+//#define NDEBUG
 #include <cassert>
 #ifndef NDEBUG
 #include <cstdio>   // for debug printing
