@@ -28,10 +28,19 @@
 using namespace std;
 
 // Global variables ///////////////////////////////////////////////////////////
+// CLI keys flags and values
+struct {
+	bool help;
+	bool file;
+	bool get;
+	bool set;
+	bool run;
+	bool stop;
+} CMD;
+
 extern char*		diagramFileName;	// file name with diagram
 extern VFD_status_t	motorStatus;		// Stores motor status
 extern VFD_param_t	motorParams;		// Stores motor parameters
-
 
 // Global function prototypes /////////////////////////////////////////////////
 /**

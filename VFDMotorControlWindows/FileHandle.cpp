@@ -5,9 +5,9 @@
  * the motor according to that diagram
  * @version 0.1
  * @date 2023-03-04
- * 
+ *
  * @copyright Copyright (c) 2023 TAN4UK
- * 
+ *
  */
 
 #include "main.h"
@@ -38,10 +38,13 @@ bool RunDiagramFromFile(VFD& motor)
 		return false;
 	}
 	// 5) Set watchdog 
-	if (!motor.SetWatchdog(1))
+	if (CMD.get)
 	{
-		assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
-		return false;
+		if (!motor.SetWatchdog(1))
+		{
+			assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
+			return false;
+		}
 	}
 	// 6) Create initial variables
 	// parameters from file
@@ -87,7 +90,7 @@ bool RunDiagramFromFile(VFD& motor)
 		if (((timeNow - timeLastOperation) > readInterval) && ((timeNow + readInterval) < fileTimeNext))
 		{
 			timeLastOperation = timeNow;
-			if (!GetMotorParameters(motor)) return false;	
+			if (!GetMotorParameters(motor)) return false;
 			timeNow = (clock() / 1000.0) - timeStart; // get new fresh time
 			PrintParameters(timeNow); // Print parameters to sceen
 			// Print parameters to file
@@ -99,7 +102,7 @@ bool RunDiagramFromFile(VFD& motor)
 				PrintParametersHeader(true, param_FILE);
 				PrintParameters(timeNow, param_FILE);
 				fclose(param_FILE);
-			}	
+			}
 		}
 		// Small delay between iterations for stability
 		Sleep(1);

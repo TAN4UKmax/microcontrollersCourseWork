@@ -56,16 +56,6 @@ specified in the first column.)
 #include "main.h"
 
 // Global variables ///////////////////////////////////////////////////////////
-
-// CLI keys flags and values
-struct {
-	bool help;
-	bool file;
-	bool get;
-	bool set;
-	bool run;
-	bool stop;
-} CMD;
 char portName[9] = "COM3";			// port name from command line
 char* diagramFileName = nullptr;	// file name with diagram
 // Get parameters flags

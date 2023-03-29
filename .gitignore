@@ -553,3 +553,4 @@ codegen/
 octave-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,visualstudio,c,c++,microsoftoffice
+VFDMotorControlWindows/paramTable.txt
