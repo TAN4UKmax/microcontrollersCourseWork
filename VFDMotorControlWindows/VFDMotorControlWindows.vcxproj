@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{07ed0d61-e2b9-4507-8961-5e6c96e61724}</ProjectGuid>
+    <ProjectGuid>{22614236-70ac-45a1-a18d-5e41e8b0e7fb}</ProjectGuid>
     <RootNamespace>VFDMotorControlWindows</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -127,7 +127,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="VFDMotorControlWindows.cpp" />
+    <ClCompile Include="COMPort.cpp" />
+    <ClCompile Include="COMPortFake.cpp" />
+    <ClCompile Include="FileHandle.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="ModbusRTUClient.cpp" />
+    <ClCompile Include="VFD.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="COMPort.h" />
+    <ClInclude Include="COMPortFake.h" />
+    <ClInclude Include="main.h" />
+    <ClInclude Include="ModbusRTUClient.h" />
+    <ClInclude Include="VFD.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="coords.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

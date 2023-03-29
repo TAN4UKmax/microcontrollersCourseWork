@@ -1,3 +1,6 @@
+# Program temporary files
+*paramTable.txt
+
 ### AutoCAD temp files ###
 *.bak
 *.dwl
