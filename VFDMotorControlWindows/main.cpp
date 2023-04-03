@@ -56,6 +56,16 @@ specified in the first column.)
 #include "main.h"
 
 // Global variables ///////////////////////////////////////////////////////////
+
+// CLI keys flags and values
+struct {
+	bool help;
+	bool file;
+	bool get;
+	bool set;
+	bool run;
+	bool stop;
+} CMD;
 char portName[9] = "COM3";			// port name from command line
 char* diagramFileName = nullptr;	// file name with diagram
 // Get parameters flags
@@ -218,7 +228,7 @@ void HandleCLIArguments(int argc, char* argv[])
 		printf("main::HandleCLIArguments() Arg %d: %s\n", i, argv[i]);
 #endif // NDEBUG
 		// Handle --help argument
-		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help"))
+		if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h") || !strcmp(argv[i], "/?"))
 		{
 			CMD.help = true;
 		}
@@ -390,17 +400,17 @@ bool GetMotorParameters(VFD& motor)
 	clock_t start_time = clock();
 #endif // NDEBUG
 	// Read all parameters and status
-	if (getParam.FrequencyCommand || getParam.OutFrequency ||
-		getParam.OutCurrent || getParam.DCVoltage ||
-		getParam.OutVoltage || getParam.PowerFactor ||
-		getParam.OutTorque || getParam.MotorSpeed)
+	//if (getParam.FrequencyCommand || getParam.OutFrequency ||
+	//	getParam.OutCurrent || getParam.DCVoltage ||
+	//	getParam.OutVoltage || getParam.PowerFactor ||
+	//	getParam.OutTorque || getParam.MotorSpeed)
+	//{
+	if (!motor.ReadParameterRegisters(&motorStatus, &motorParams))
 	{
-		if (!motor.ReadParameterRegisters(&motorStatus, &motorParams))
-		{
-			assert(("main::GetMotorParameters() Read parameters error", 0));
-			return false;
-		}
+		assert(("main::GetMotorParameters() Read parameters error", 0));
+		return false;
 	}
+	//}
 	// Read OutPower parameter
 	if (getParam.OutPower)
 	{

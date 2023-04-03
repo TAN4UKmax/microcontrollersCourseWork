@@ -12,6 +12,28 @@
 
 #include "main.h"
 
+/**
+ * @brief Get the Next Time and Frequency pair from file with diagram coordinates
+ * 
+ * @param diagramFile[in]	- pointer to FILE handle with diagram
+ * @param curTime[in]       - current time
+ * @param curFreq[in]       - current frequency
+ * @param nextTime[out]     - pointer to variable when the next time will be stored
+ * @param nextFreq[out]     - pointer to variable when the next frequency will be stored
+ * @return true				- if new coordinates have read
+ * @return false			- if no new coordinates (end of file reached)
+ */
+bool GetNextTimeAndFrequency(FILE* diagramFile,
+	double curTime, double curFreq,
+	double* nextTime, double* nextFreq);
+
+/**
+ * @brief Prints measured parameters into screen and into file
+ * 
+ * @param time[in]  - time when parameters measured
+ */
+void OutParameters(double time);
+
 bool RunDiagramFromFile(VFD& motor)
 {
 	// 1) Update max frequency parameter from VFD (and check connection by doing this)
@@ -29,23 +51,21 @@ bool RunDiagramFromFile(VFD& motor)
 		return false;
 	}
 	// 3) Print output parameters table header to screen
+	// 3.1) Read and print initial parameters
 	PrintParametersHeader(true);
 	// 4) Update max frewuency and read parameters to determine current frequency
 	// (This will allow to start motor not only from zero frequency)
-	if (!motor.ReadParameterRegisters(&motorStatus, &motorParams))
+	if (!GetMotorParameters(motor)) return false;
+	OutParameters(0); // Out parameters at 0 time
+	// 5) Set watchdog 
+	//if (CMD.get)
+	//{
+	if (!motor.SetWatchdog(1))
 	{
-		assert(("main::RunDiagramFromFile(): Read initial motor parameters error", 0));
+		assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
 		return false;
 	}
-	// 5) Set watchdog 
-	if (CMD.get)
-	{
-		if (!motor.SetWatchdog(1))
-		{
-			assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
-			return false;
-		}
-	}
+	//}
 	// 6) Create initial variables
 	// parameters from file
 	double	fileFreqNext = 0;	// next frequency from file
@@ -70,7 +90,12 @@ bool RunDiagramFromFile(VFD& motor)
 			if (!GetNextTimeAndFrequency(diagram_FILE, fileTimeCur, fileFreqCur, &fileTimeNext, &fileFreqNext))
 			{
 				// Reached end of file
-				// stop motor at the minimal deceleration (0 deceleration time is dangerous)
+				// 1) Print last coordinate parameters
+				if (!GetMotorParameters(motor)) return false;
+				timeNow = (clock() / 1000.0) - timeStart; // get new fresh time
+				OutParameters(timeNow);
+
+				// 2) Stop motor at the minimal deceleration (0 deceleration time is dangerous)
 				if (!motor.SetDecelerationTime(0) || !motor.Stop())
 				{
 					assert(("main::RunDiagramFromFile(): Stop motor error", 0));
@@ -92,17 +117,7 @@ bool RunDiagramFromFile(VFD& motor)
 			timeLastOperation = timeNow;
 			if (!GetMotorParameters(motor)) return false;
 			timeNow = (clock() / 1000.0) - timeStart; // get new fresh time
-			PrintParameters(timeNow); // Print parameters to sceen
-			// Print parameters to file
-			FILE* param_FILE;
-			int openStatus = fopen_s(&param_FILE, "paramTable.txt", "w");
-			// Print params to file only if it is correctly opened
-			if ((param_FILE != nullptr) || !openStatus)
-			{
-				PrintParametersHeader(true, param_FILE);
-				PrintParameters(timeNow, param_FILE);
-				fclose(param_FILE);
-			}
+			OutParameters(timeNow);
 		}
 		// Small delay between iterations for stability
 		Sleep(1);
@@ -153,4 +168,19 @@ bool GetNextTimeAndFrequency(FILE* diagramFile,
 		dirChange = false;
 	}
 	return true;
+}
+
+void OutParameters(double time)
+{
+	PrintParameters(time); // Print parameters to sceen
+	// Print parameters to file
+	FILE* param_FILE;
+	int openStatus = fopen_s(&param_FILE, "paramTable.txt", "w");
+	// Print params to file only if it is correctly opened
+	if ((param_FILE != nullptr) || !openStatus)
+	{
+		PrintParametersHeader(true, param_FILE);
+		PrintParameters(time, param_FILE);
+		fclose(param_FILE);
+	}
 }

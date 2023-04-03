@@ -1,5 +1,6 @@
 % function start_with_timer()
-clc, clear, close all
+% clc, clear, close all
+close all
 port = 'COM9';
 global tmrTime lastTimeParam paramFileName maxTime tmr
 global freq_line current_line DC_voltage_line voltage_line PF_line torque_line speed_line power_line temp_line % lines
@@ -181,6 +182,10 @@ fclose(fileID);
 
 pause(1); % wait a bit until figure opens
 %% Launch program
+if isfile(paramFileName)
+    delete(paramFileName);
+end
+
 programName = 'VFDMotorControlWindows.exe';
 % CMDcommand = [programName, ' --port ', port, ...
 %     ' --file ', outFileName, ...
@@ -256,7 +261,7 @@ end
 
 curTime = toc(tmrTime); % теперь это время относительно последнего принта
 % end of diagram event
-if lastTimeParam + curTime > maxTime
+if lastTimeParam + curTime > (maxTime + 0.5)
     disp('end of diagram');
     CMDcommand = 'TASKKILL /F /IM cmd.exe';
     system(CMDcommand);

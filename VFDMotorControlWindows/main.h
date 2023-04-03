@@ -28,15 +28,6 @@
 using namespace std;
 
 // Global variables ///////////////////////////////////////////////////////////
-// CLI keys flags and values
-struct {
-	bool help;
-	bool file;
-	bool get;
-	bool set;
-	bool run;
-	bool stop;
-} CMD;
 
 extern char*		diagramFileName;	// file name with diagram
 extern VFD_status_t	motorStatus;		// Stores motor status
@@ -52,21 +43,6 @@ extern VFD_param_t	motorParams;		// Stores motor parameters
  * @return false    - if some error occured
  */
 bool RunDiagramFromFile(VFD& motor);
-
-/**
- * @brief Get the Next Time and Frequency pair from file with diagram coordinates
- *
- * @param diagramFile[in]	- pointer to FILE handle with diagram
- * @param curTime[in]       - current time
- * @param curFreq[in]       - current frequency
- * @param nextTime[out]     - pointer to variable when the next time will be stored
- * @param nextFreq[out]     - pointer to variable when the next frequency will be stored
- * @return true				- if new coordinates have read
- * @return false			- if no new coordinates (end of file reached)
- */
-bool GetNextTimeAndFrequency(FILE* diagramFile,
-	double curTime, double curFreq,
-	double* nextTime, double* nextFreq);
 
 /**
  * @brief Get the Motor Parameters requested by user and print them
