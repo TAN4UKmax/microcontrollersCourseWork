@@ -12,24 +12,24 @@
 
 #include "main.h"
 
-/**
- * @brief Get the Next Time and Frequency pair from file with diagram coordinates
- * 
- * @param diagramFile[in]	- pointer to FILE handle with diagram
- * @param curTime[in]       - current time
- * @param curFreq[in]       - current frequency
- * @param nextTime[out]     - pointer to variable when the next time will be stored
- * @param nextFreq[out]     - pointer to variable when the next frequency will be stored
- * @return true				- if new coordinates have read
- * @return false			- if no new coordinates (end of file reached)
- */
+ /**
+  * @brief Get the Next Time and Frequency pair from file with diagram coordinates
+  *
+  * @param diagramFile[in]	- pointer to FILE handle with diagram
+  * @param curTime[in]		- current time
+  * @param curFreq[in]		- current frequency
+  * @param nextTime[out]	- pointer to variable when the next time will be stored
+  * @param nextFreq[out]	- pointer to variable when the next frequency will be stored
+  * @return true			- if new coordinates have read
+  * @return false			- if no new coordinates (end of file reached)
+  */
 bool GetNextTimeAndFrequency(FILE* diagramFile,
 	double curTime, double curFreq,
 	double* nextTime, double* nextFreq);
 
 /**
  * @brief Prints measured parameters into screen and into file
- * 
+ *
  * @param time[in]  - time when parameters measured
  */
 void OutParameters(double time);
@@ -45,6 +45,9 @@ bool RunDiagramFromFile(VFD& motor)
 	// 2) Open file with required diagram and check open error
 	FILE* diagram_FILE;
 	int openStatus = fopen_s(&diagram_FILE, diagramFileName, "r");
+#ifndef NDEBUG
+	printf("main::RunDiagramFromFile() File %p opened\n", diagram_FILE);
+#endif // NDEBUG
 	if ((diagram_FILE == nullptr) || openStatus)
 	{
 		assert(("main::RunDiagramFromFile(): Read coords file error", 0));
@@ -53,19 +56,16 @@ bool RunDiagramFromFile(VFD& motor)
 	// 3) Print output parameters table header to screen
 	// 3.1) Read and print initial parameters
 	PrintParametersHeader(true);
-	// 4) Update max frewuency and read parameters to determine current frequency
+	// 4) Update max frequency and read parameters to determine current frequency
 	// (This will allow to start motor not only from zero frequency)
 	if (!GetMotorParameters(motor)) return false;
 	OutParameters(0); // Out parameters at 0 time
 	// 5) Set watchdog 
-	//if (CMD.get)
-	//{
 	if (!motor.SetWatchdog(1))
 	{
 		assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
 		return false;
 	}
-	//}
 	// 6) Create initial variables
 	// parameters from file
 	double	fileFreqNext = 0;	// next frequency from file
@@ -76,6 +76,9 @@ bool RunDiagramFromFile(VFD& motor)
 	double	timeStart = clock() / 1000.0;	// time of start following diagram in seconds
 	double	timeLastOperation = 0;			// last time of parameters measure
 	const double readInterval = 0.1;		// time interval between read parameters
+#ifndef NDEBUG
+	printf("main::RunDiagramFromFile() Diagram started in %g\n", timeStart);
+#endif // NDEBUG
 	// Start following diagram ////////////////////////////////////////////////
 	while (true)
 	{
@@ -83,13 +86,16 @@ bool RunDiagramFromFile(VFD& motor)
 		// Set new motor parameters
 		if (timeNow >= fileTimeNext) // if current time is greater than assigned time from file
 		{
-			//timeLastOperation = timeNow; // to prevent reading next param after writing (without delay)
+#ifndef NDEBUG
+			printf("main::RunDiagramFromFile() Write new parameter in %g\n", timeNow);
+#endif // NDEBUG
 			fileTimeCur = timeNow;		// timeNow here to calculate parameters more precise
 			fileFreqCur = motorParams.OutFrequency; // update frequency
 			// Read new time and frequency parameters from file
 			if (!GetNextTimeAndFrequency(diagram_FILE, fileTimeCur, fileFreqCur, &fileTimeNext, &fileFreqNext))
 			{
 				// Reached end of file
+				fclose(diagram_FILE);
 				// 1) Print last coordinate parameters
 				if (!GetMotorParameters(motor)) return false;
 				timeNow = (clock() / 1000.0) - timeStart; // get new fresh time
@@ -103,6 +109,9 @@ bool RunDiagramFromFile(VFD& motor)
 				}
 				return true;
 			}
+#ifndef NDEBUG
+			printf("main::RunDiagramFromFile() Change frequency to %g in %g s\n", fileFreqNext, fileTimeNext);
+#endif // NDEBUG
 			// Set new parameters
 			if (!motor.ChangeFrequency(fileFreqCur, fileFreqNext, fileTimeNext - fileTimeCur))
 			{
@@ -133,6 +142,9 @@ bool GetNextTimeAndFrequency(FILE* diagramFile,
 	static bool		dirChange = false;	// true if direction is going to change
 	static double	tempTime = 0;		// stores temporary time
 	static double	tempFreq = 0;		// stores temporary frequency
+#ifndef NDEBUG
+	printf("main::GetNextTimeAndFrequency() Read new data from file %p\n", diagramFile);
+#endif // NDEBUG
 	if (!dirChange) // no direction change
 	{
 		while (true)
@@ -140,6 +152,9 @@ bool GetNextTimeAndFrequency(FILE* diagramFile,
 			int read_result = fscanf_s(diagramFile, "%lf%lf",
 				nextTime, nextFreq);
 			// success read check
+#ifndef NDEBUG
+			printf("main::GetNextTimeAndFrequency() New point %g, %g\n", *nextTime, *nextFreq);
+#endif // NDEBUG
 			// 0.25 is necessary to prevent updating frequency to fast
 			if ((read_result == 2) && (*nextTime >= (curTime + 0.25)))
 			{

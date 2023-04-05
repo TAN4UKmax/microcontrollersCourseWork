@@ -1,7 +1,7 @@
 /**
  * @file COMPort.h
  * @author TAN4UK (tan4ukmak7@gmail.com)
- * @brief Class for communication with COM port through WinAPI
+ * @brief Class for communication with COM port on 7188 uPAC
  * @version 0.1
  * @date 2023-02-13
  *
@@ -12,59 +12,47 @@
 #ifndef COMPORT_H
 #define COMPORT_H
 
-//#include ".\Lib\7188E.H" // 7188EX uPAC header
-//#include "..\Lib\7188E.H" // 7188EX uPAC header
-#include <Windows.h>
-
+#include ".\Lib\7188E.H"  // 7188EX uPAC
 
 class COMPort
 {
 private:
-	HANDLE          hCOM;           // COM port handler structure
-	// variable that receives a mask indicating the type of port error
-	DWORD           error;
+    char			port;           // 0-8 (COM0-COM8) port number
+    char			opened;         // current status of COM port
 
-	char            name[9];	    // COM port name ("COM3" by default)
+	char            name[12];	    // COM port name ("COM2" by default)
 	unsigned long   baud;			// baudrate of communication (9600 by default)
-	unsigned char   dataBit;        // number of bits of data (8 by default)
-	char            parity;         // parity parameter ('N' by default)
-	unsigned char   stopBit;        // number of stop bits (1 by default)
+	char			dataBit;        // number of bits of data (8 by default)
+	char			parity;         // parity parameter ('N' by default)
+	char			stopBit;        // number of stop bits (1 by default)
 
 	unsigned long	tInterval;      // interval timeout for read operation
 	unsigned long	tMultiplier;	// multiplier timeout for read operation
 	unsigned long	tConstant;      // constant timeout for read operation
 
-	/**
-	 * @brief Write parameters into DCB internal structure
-	 *
-	 * @return true     - if success
-	 * @return false    - if fails
-	 */
-	bool WriteDCB();
-
     /**
-     * @brief Write read timeouts into internal structure
+     * @brief Writes COM port connection parameters into internal structures
      * 
-     * @return true     - if success
-     * @return false    - if fails
+	 * @return 1    - if success
+	 * @return 0    - if fails
      */
-	bool TimeoutsSetup();
+    char PortSetup(void);
 public:
 	/**
 	 * @brief Construct a new COMPort object
 	 *
-	 * @param name[in]      - COM port name ("COM3" by default)
+	 * @param name[in]      - COM port name ("COM2" by default)
 	 * @param baud[in]      - baudrate of communication (9600 by default)
 	 * @param dataBit[in]   - number of bits of data (8 by default)
 	 * @param parity[in]    - parity parameter ('N' or NOPARITY by default)
 	 * @param stopBit[in]   - number of stop bits (1 or ONESTOPBIT by default)
 	 */
 	COMPort(
-		const char* name = "COM3",
+		const char* name = "COM2",
 		unsigned long baud = 9600,
-		unsigned char dataBit = 8,
+		char dataBit = 8,
 		char parity = 'N',
-		unsigned char stopBit = 1);
+		char stopBit = 1);
 
 	/**
 	 * @brief Copy constructor for COMPort.
@@ -86,23 +74,6 @@ public:
 	COMPort& operator =(COMPort& other);
 
 	/**
-	 * @brief Move constructor for COMPort.
-     * Is necessary for correct handle transfer and share resourse.
-	 * 
-	 * @param other[in]     - COMPort object that will be moved into current instance
-	 */
-	COMPort(COMPort&& other) noexcept;
-
-	/**
-	 * @brief Move operator for COMPort.
-     * Is necessary for correct handle transfer and share resourse.
-	 * 
-	 * @param other[in]	- COMPort object that will be moved into current instance
-	 * @return COMPort& - reference to current instance of class
-	 */
-	COMPort& operator =(COMPort&& other) noexcept;
-
-	/**
 	 * @brief Destroy the COMPort object (closes the file handle)
 	 *
 	 */
@@ -111,26 +82,26 @@ public:
 	/**
 	 * @brief Open COM port communication
 	 *
-	 * @return true		- if open success
-	 * @return false	- if open fails
+	 * @return 1    - if success
+	 * @return 0    - if fails
 	 */
-	bool Open();
+	char Open(void);
 
 	/**
 	 * @brief Check current state of COM port
 	 *
-	 * @return true     - Port is opened
-	 * @return false    - Port is closed
+	 * @return 1    - Port is opened
+	 * @return 0    - Port is closed
 	 */
-	bool isOpen();
+	char isOpen(void);
 
 	/**
 	 * @brief Close COM port communication
 	 *
-	 * @return true		- if close success
-	 * @return false	- if close fails
+	 * @return 1    - if close success
+	 * @return 0    - if close fails
 	 */
-	bool Close();
+	char Close(void);
 
 	/**
 	 * @brief Set the Config of port, allows to change COM port configuration after creating an object
@@ -139,14 +110,14 @@ public:
 	 * @param dataBit[in]   - number of bits of data (8 by default)
 	 * @param parity[in]    - parity parameter ('N' or NOPARITY by default)
 	 * @param stopBit[in]   - number of stop bits (1 or ONESTOPBIT by default)
-	 * @return true			- if port parameters changed
-	 * @return false		- if change fails
+	 * @return 1            - if port parameters changed
+	 * @return 0            - if change fails
 	 */
-	bool SetConfig(
+	char SetConfig(
 		unsigned long baud = 9600,
-		unsigned char dataBit = 8,
+		char dataBit = 8,
 		char parity = 'N',
-		unsigned char stopBit = 1);
+		char stopBit = 1);
 
 	/**
 	 * @brief Set the Read Timeouts for COM port buffer.
@@ -166,10 +137,10 @@ public:
 	 * @param interval[in]      - The maximum time allowed to elapse before the arrival of the next byte on the communications line, in milliseconds
 	 * @param multiplier[in]    - The multiplier used to calculate the total time-out period for read operations, in milliseconds.
 	 * @param constant[in]      - A constant used to calculate the total time-out period for read operations, in milliseconds.
-	 * @return true				- if timeouts updated
-	 * @return false			- if timeouts update fails
+	 * @return 1                - if timeouts updated
+	 * @return 0                - if timeouts update fails
 	 */
-	bool SetReadTimeouts(
+	char SetReadTimeouts(
 		unsigned long interval = 0,
 		unsigned long multiplier = 0,
 		unsigned long constant = 1);
@@ -177,10 +148,10 @@ public:
 	/**
 	 * @brief Clears input buffer of port and terminates all current read operations
 	 *
-	 * @return true		- if clear success
-	 * @return false	- if clear fails
+	 * @return 1    - if clear success
+	 * @return 0    - if clear fails
 	 */
-	bool ClearReadBuffer();
+	char ClearReadBuffer(void);
 
 	/**
 	 * @brief Writes an array of binary data into COM port
@@ -196,7 +167,7 @@ public:
 	 *
 	 * @param buf[out]      - pointer to data buffer
 	 * @param length[in]    - buffer length
-	 * @return long			- number of read bytes or -1 if error
+	 * @return long			- number of read bytes or -1 if error (0 when timeout)
 	 */
 	long Read(unsigned char* buf, unsigned char length);
 };

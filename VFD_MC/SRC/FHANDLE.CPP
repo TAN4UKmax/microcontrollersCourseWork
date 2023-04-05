@@ -10,147 +10,220 @@
  *
  */
 
-#ifdef _I7188E_
-#include ".\INC\MAIN.H"
-#else
-#include "..\INC\MAIN.H"
-#endif
+ //#ifdef _I7188E_
+#include ".\INC\MAIN.H" // 7188EX uPAC
+//#else
+//#include "..\INC\MAIN.H" // windows
+//#endif
+
+ /**
+  * @brief Functions is used to reset this program
+  *
+  */
+void (far* ResetProgram)(void) = (void(*)())0xFFFF0000L;    //Program start address.
 
 /**
  * @brief Get the Next Time and Frequency pair from file with diagram coordinates
- * 
+ *
  * @param diagramFile[in]	- pointer to FILE handle with diagram
  * @param curTime[in]       - current time
  * @param curFreq[in]       - current frequency
  * @param nextTime[out]     - pointer to variable when the next time will be stored
  * @param nextFreq[out]     - pointer to variable when the next frequency will be stored
- * @return true				- if new coordinates have read
- * @return false			- if no new coordinates (end of file reached)
+ * @return 1				- if new coordinates have read
+ * @return 0				- if no new coordinates (end of file reached)
  */
-bool GetNextTimeAndFrequency(FILE* diagramFile,
-	double curTime, double curFreq,
-	double* nextTime, double* nextFreq);
+char GetNextTimeAndFrequency(FILE_DATA far* diagramFile,
+	float curTime, float curFreq,
+	float* nextTime, float* nextFreq);
 
 /**
  * @brief Prints measured parameters into screen and into file
- * 
+ *
  * @param time[in]  - time when parameters measured
  */
-void OutParameters(double time);
+void OutParameters(float time);
 
-bool RunDiagramFromFile(VFD& motor)
+char RunDiagramFromFile(VFD& motor)
 {
+	// 0) Wait for button press
+	while (ReadInitPin() == 0);
+	Delay(50); // debounce prevent
+
 	// 1) Update max frequency parameter from VFD (and check connection by doing this)
-	if (!motor.ReadMaxFrequency())
+	// On 7188 uPAC this request will be sending until VFD respond
+	while (!motor.ReadMaxFrequency());
+	// Attention LED blinking
+	for (char i = 0; i < 10; i++)
 	{
-		assert(("main::RunDiagramFromFile(): Read max frequency error", 0));
-		return false;
+		LedOn();
+		Delay(100);
+		LedOff();
+		Delay(100);
 	}
+	LedOn(); // LED is on when diagram works
+
 	// 2) Open file with required diagram and check open error
-	FILE* diagram_FILE;
-	int openStatus = fopen_s(&diagram_FILE, diagramFileName, "r");
-	if ((diagram_FILE == nullptr) || openStatus)
+	static FILE_DATA far* diagram_FILE = 0;
+	diagram_FILE = GetFileInfoByName(diagramFileName);
+#ifndef NDEBUG
+	Print("main::RunDiagramFromFile() File %p opened\n", diagram_FILE);
+#endif // NDEBUG
+	if (diagram_FILE == 0)
 	{
 		assert(("main::RunDiagramFromFile(): Read coords file error", 0));
-		return false;
+		return 0;
 	}
 	// 3) Print output parameters table header to screen
 	// 3.1) Read and print initial parameters
-	PrintParametersHeader(true);
-	// 4) Update max frewuency and read parameters to determine current frequency
+	PrintParametersHeader(1); // Prints with time
+	// 4) Update max frequency and read parameters to determine current frequency
 	// (This will allow to start motor not only from zero frequency)
-	if (!GetMotorParameters(motor)) return false;
+	if (!GetMotorParameters(motor)) return 0;
 	OutParameters(0); // Out parameters at 0 time
 	// 5) Set watchdog 
-	//if (CMD.get)
-	//{
 	if (!motor.SetWatchdog(1))
 	{
 		assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
-		return false;
+		return 0;
 	}
-	//}
 	// 6) Create initial variables
 	// parameters from file
-	double	fileFreqNext = 0;	// next frequency from file
-	double	fileTimeNext = 0;	// next time from file
-	double	fileFreqCur = 0;	// current frequency from file
-	double	fileTimeCur = 0;	// current time from file
+	float	fileFreqNext = 0;	// next frequency from file
+	float	fileTimeNext = 0;	// next time from file
+	float	fileFreqCur = 0;	// current frequency from file
+	float	fileTimeCur = 0;	// current time from file
 	// timers
-	double	timeStart = clock() / 1000.0;	// time of start following diagram in seconds
-	double	timeLastOperation = 0;			// last time of parameters measure
-	const double readInterval = 0.1;		// time interval between read parameters
+	float	timeStart = GetTimeTicks() / 1000.0;	// time of start following diagram in seconds
+	float	timeLastOperation = 0;			// last time of parameters measure
+	const float readInterval = 0.1;		// time interval between read parameters
+#ifndef NDEBUG
+	Print("main::RunDiagramFromFile() Diagram started in %g\n", timeStart);
+#endif // NDEBUG
 	// Start following diagram ////////////////////////////////////////////////
-	while (true)
+	while (1)
 	{
-		double timeNow = (clock() / 1000.0) - timeStart; // current moment time (seconds)
+		float timeNow = (GetTimeTicks() / 1000.0) - timeStart; // current moment time (seconds)
 		// Set new motor parameters
 		if (timeNow >= fileTimeNext) // if current time is greater than assigned time from file
 		{
-			//timeLastOperation = timeNow; // to prevent reading next param after writing (without delay)
+#ifndef NDEBUG
+			Print("main::RunDiagramFromFile() Write new parameter in %g\n", timeNow);
+#endif // NDEBUG
 			fileTimeCur = timeNow;		// timeNow here to calculate parameters more precise
 			fileFreqCur = motorParams.OutFrequency; // update frequency
 			// Read new time and frequency parameters from file
 			if (!GetNextTimeAndFrequency(diagram_FILE, fileTimeCur, fileFreqCur, &fileTimeNext, &fileFreqNext))
 			{
 				// Reached end of file
+				LedOff(); // Switch off LED on 7188 uPAC
 				// 1) Print last coordinate parameters
-				if (!GetMotorParameters(motor)) return false;
-				timeNow = (clock() / 1000.0) - timeStart; // get new fresh time
+				if (!GetMotorParameters(motor)) return 0;
+				timeNow = (GetTimeTicks() / 1000.0) - timeStart; // get new fresh time
 				OutParameters(timeNow);
 
 				// 2) Stop motor at the minimal deceleration (0 deceleration time is dangerous)
 				if (!motor.SetDecelerationTime(0) || !motor.Stop())
 				{
 					assert(("main::RunDiagramFromFile(): Stop motor error", 0));
-					return false;
+					return 0;
 				}
-				return true;
+
+				// 3) Reset 7188 controller
+				ResetProgram();
+				return 1;
 			}
+#ifndef NDEBUG
+			Print("main::RunDiagramFromFile() Change frequency to %g in %g s\n", fileFreqNext, fileTimeNext);
+#endif // NDEBUG
 			// Set new parameters
 			if (!motor.ChangeFrequency(fileFreqCur, fileFreqNext, fileTimeNext - fileTimeCur))
 			{
 				assert(("main::RunDiagramFromFile(): Change frequency error", 0));
-				return false;
+				return 0;
 			}
 		}
 		// Read current motor parameters (every 100 ms)
 		// read only when no write operations in the next 100 ms
 		if (((timeNow - timeLastOperation) > readInterval) && ((timeNow + readInterval) < fileTimeNext))
 		{
+#ifndef NDEBUG
+			Print("main::RunDiagramFromFile() Read parameters in %g\n", timeNow);
+#endif // NDEBUG
 			timeLastOperation = timeNow;
-			if (!GetMotorParameters(motor)) return false;
-			timeNow = (clock() / 1000.0) - timeStart; // get new fresh time
+			if (!GetMotorParameters(motor)) return 0;
+			timeNow = (GetTimeTicks() / 1000.0) - timeStart; // get new fresh time
 			OutParameters(timeNow);
 		}
 		// Small delay between iterations for stability
-		Sleep(1);
+		Delay(1);
+
+		//Stop motor from INIT* button
+		if (ReadInitPin())
+		{
+			// 1) Switch off the LED
+			LedOff();
+			// 2) Stop motor at the minimal deceleration (0 deceleration time is dangerous)
+			if (!motor.SetDecelerationTime(0) || !motor.Stop())
+			{
+				assert(("main::RunDiagramFromFile(): Stop motor error", 0));
+				return 0;
+			}
+			// 3) Reset 7188 controller program
+			ResetProgram();
+			return 1;
+		}
 	}
-	return true;
 }
 
-bool GetNextTimeAndFrequency(FILE* diagramFile,
-	double curTime, double curFreq,
-	double* nextTime, double* nextFreq)
+char GetNextTimeAndFrequency(FILE_DATA far* diagramFile,
+	float curTime, float curFreq,
+	float* nextTime, float* nextFreq)
 {
 	// temporary variables (necessary for part of diagram when direction changes)
-	static bool		dirChange = false;	// true if direction is going to change
-	static double	tempTime = 0;		// stores temporary time
-	static double	tempFreq = 0;		// stores temporary frequency
+	static char		dirChange = 0;		// 1 if direction is going to change
+	static float	tempTime = 0;		// stores temporary time
+	static float	tempFreq = 0;		// stores temporary frequency
+
+	static unsigned long fPos = 0; // Stores current file pointer position
+
+#ifndef NDEBUG
+	Print("main::GetNextTimeAndFrequency() Read new data from file %p in pos %u\n", diagramFile, fPos);
+#endif // NDEBUG
 	if (!dirChange) // no direction change
 	{
-		while (true)
+		while (1)
 		{
-			int read_result = fscanf_s(diagramFile, "%lf%lf",
-				nextTime, nextFreq);
+			if (fPos >= diagramFile->size) return 0;// reached end of file
+			int read_result = sscanf(&(diagramFile->addr[fPos]), "%f%f", nextTime, nextFreq);
+			// GET NEXT LINE POSITION
+			while (fPos < diagramFile->size)
+			{
+				char c = diagramFile->addr[fPos];
+				if (c == '\n' || c == '\r')
+				{
+					fPos++;
+					c = diagramFile->addr[fPos];
+					if (c == '\n' || c == '\r')
+					{
+						fPos++;
+						break;
+					}
+					break;
+				}
+				fPos++;
+			}
 			// success read check
+#ifndef NDEBUG
+			Print("main::GetNextTimeAndFrequency() New point %g, %g\n", *nextTime, *nextFreq);
+#endif // NDEBUG
 			// 0.25 is necessary to prevent updating frequency to fast
 			if ((read_result == 2) && (*nextTime >= (curTime + 0.25)))
 			{
 				// check direction change
 				if ((curFreq * (*nextFreq)) < 0)
 				{
-					dirChange = true;
+					dirChange = 1;
 					tempTime = *nextTime;
 					tempFreq = *nextFreq;
 					*nextFreq = 0;
@@ -158,33 +231,20 @@ bool GetNextTimeAndFrequency(FILE* diagramFile,
 					*nextTime = curTime + (*nextFreq - curFreq) *
 						((tempTime - curTime) / (tempFreq - curFreq));
 				}
-				return true;
+				return 1;
 			}
-			// clean current line
-			while ((fgetc(diagramFile) != '\n') && (!feof(diagramFile)));
-			if (feof(diagramFile)) return false;// reached end of file
 		}
 	}
 	else // direction is going to change
 	{
 		*nextTime = tempTime;
 		*nextFreq = tempFreq;
-		dirChange = false;
+		dirChange = 0;
 	}
-	return true;
+	return 1;
 }
 
-void OutParameters(double time)
+void OutParameters(float time)
 {
 	PrintParameters(time); // Print parameters to sceen
-	// Print parameters to file
-	FILE* param_FILE;
-	int openStatus = fopen_s(&param_FILE, "paramTable.txt", "w");
-	// Print params to file only if it is correctly opened
-	if ((param_FILE != nullptr) || !openStatus)
-	{
-		PrintParametersHeader(true, param_FILE);
-		PrintParameters(time, param_FILE);
-		fclose(param_FILE);
-	}
 }

@@ -15,21 +15,14 @@
 
 // Global includes ////////////////////////////////////////////////////////////
 
-#include <stdio.h>	// for 'printf'
+#include <stdio.h>	// for 'sscanf'
 #include <stdlib.h>	// for 'atof'
 #include <string.h>	// for string operations like 'strlen' and 'strcpy'
-#include <time.h>	// for time intervals in milliseconds measure and date check
 
 //#define NDEBUG
 #include <assert.h>	// for debug printing
 
-#ifdef _I7188E_
-#include ".\INC\VFD.H"
-#else
-#include "..\INC\VFD.H"
-#endif
-
-//using namespace std;
+#include ".\INC\VFD.H" // 7188EX uPAC
 
 // Global variables ///////////////////////////////////////////////////////////
 
@@ -43,27 +36,28 @@ extern VFD_param_t	motorParams;		// Stores motor parameters
  * Also measure motor parameters specified by -- get CLI argument.
  *
  * @param motor[in] - reference to VFD class instance
- * @return true     - if motor have run according to the file
- * @return false    - if some error occured
+ * @return 1     - if motor have run according to the file
+ * @return 0    - if some error occured
  */
-bool RunDiagramFromFile(VFD& motor);
+char RunDiagramFromFile(VFD& motor);
 
 /**
  * @brief Get the Motor Parameters requested by user and print them
  *
  * @param motor[in] - reference to VFD class instance
- * @return true     - if all motor parameters have read successfully
- * @return false    - if some error occured
+ * @return 1     - if all motor parameters have read successfully
+ * @return 0    - if some error occured
  */
-bool GetMotorParameters(VFD& motor);
+char GetMotorParameters(VFD& motor);
 
 /**
  * @brief Print table header for parameters, specified in input arguments
  *
- * @param Time[in]			- Should be true if you want to print time later
+ * @param Time[in]			- Should be 1 if you want to print time later
  * @param printStream[in]	- File handle, if not specified, parameters will be printed into stdout stream
  */
-void PrintParametersHeader(bool Time = false, FILE* printStream = stdout);
+//void PrintParametersHeader(char Time = 0, FILE_DATA far* printStream = 0);
+void PrintParametersHeader(char Time = 0);
 
 /**
  * @brief Print parameters, specified in input arguments
@@ -71,6 +65,7 @@ void PrintParametersHeader(bool Time = false, FILE* printStream = stdout);
  * @param Time[in]			- if you want to print time specify it here
  * @param printStream[in]	- File handle, if not specified, parameters will be printed into stdout stream
  */
-void PrintParameters(double Time = -1, FILE* printStream = stdout);
+//void PrintParameters(float Time = -1, FILE_DATA far* printStream = 0);
+void PrintParameters(float Time = -1);
 
 #endif // MAIN_H

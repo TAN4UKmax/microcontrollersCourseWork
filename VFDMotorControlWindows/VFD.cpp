@@ -18,30 +18,6 @@ VFD::VFD(ModbusRTUClient mb /* = { 1, {portName, 9600, 8, 'E', 1} } */) :
 #endif // NDEBUG
 }
 
-//VFD::VFD(VFD& other) : MB(other.MB), commStatus(other.commStatus) {}
-//
-//VFD& VFD::operator =(VFD& other)
-//{
-//	if (this != &other)
-//	{
-//		MB = other.MB;
-//		commStatus = other.commStatus;
-//	}
-//	return (*this);
-//}
-
-//VFD::VFD(VFD&& other) noexcept : MB(other.MB),commStatus(other.commStatus) {}
-//
-//VFD& VFD::operator =(VFD&& other) noexcept
-//{
-//	if (this != &other)
-//	{
-//		MB = other.MB;
-//		commStatus = other.commStatus;
-//	}
-//	return (*this);
-//}
-
 VFD::~VFD()
 {
 #ifndef NDEBUG

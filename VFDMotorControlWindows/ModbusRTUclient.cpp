@@ -97,7 +97,7 @@ bool ModbusRTUClient::Transfer(unsigned char wPDUBytes, unsigned char rPDUBytes)
 			printf("ModbusRTUClient::Transfer() Attempt %u: Bytes count mismatch\n", attempt);
 #endif // NDEBUG
 			// Increase timeout if the server is too slow
-			COM.SetReadTimeouts((attempt + 1), 0, 1000);
+			COM.SetReadTimeouts((attempt * 2), 0, 1000);
 			continue;
 		}
 		if (!responseCRCCheck(rPDUBytes))
@@ -223,19 +223,6 @@ ModbusRTUClient::ModbusRTUClient(ModbusRTUClient& other) :
 	memcpy(rBuf, other.rBuf, 256);
 }
 
-//ModbusRTUClient& ModbusRTUClient::operator =(ModbusRTUClient& other)
-//{
-//	if (this != &other)
-//	{
-//		COM = other.COM;
-//		devAddress = other.devAddress;
-//		transmitAttempts = other.transmitAttempts;
-//		memcpy(wBuf, other.wBuf, 256);
-//		memcpy(rBuf, other.rBuf, 256);
-//	}
-//	return (*this);
-//}
-
 ModbusRTUClient::ModbusRTUClient(ModbusRTUClient&& other) noexcept :
 	COM(other.COM),
 	devAddress(other.devAddress),
@@ -244,19 +231,6 @@ ModbusRTUClient::ModbusRTUClient(ModbusRTUClient&& other) noexcept :
 	memcpy(wBuf, other.wBuf, 256);
 	memcpy(rBuf, other.rBuf, 256);
 }
-
-//ModbusRTUClient& ModbusRTUClient::operator =(ModbusRTUClient&& other) noexcept
-//{
-//	if (this != &other)
-//	{
-//		COM = other.COM;
-//		devAddress = other.devAddress;
-//		transmitAttempts = other.transmitAttempts;
-//		memcpy(wBuf, other.wBuf, 256);
-//		memcpy(rBuf, other.rBuf, 256);
-//	}
-//	return (*this);
-//}
 
 ModbusRTUClient::~ModbusRTUClient()
 {

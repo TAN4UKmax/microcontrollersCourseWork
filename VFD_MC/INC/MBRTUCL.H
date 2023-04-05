@@ -12,21 +12,7 @@
 #ifndef MODBUSRTUCLIENT_H
 #define MODBUSRTUCLIENT_H
 
-#define FAKE_PORT // uncomment it for use fake port and test modbus
-
-#ifdef FAKE_PORT
-#ifdef _I7188E_
-#include ".\INC\COMPORTF.H"
-#else
-#include "..\INC\COMPORTF.H"
-#endif
-#else
-#ifdef _I7188E_
-#include ".\INC\COMPORT.H"
-#else
-#include "..\INC\COMPORT.H"
-#endif
-#endif
+#include ".\INC\COMPORT.H"  // 7188EX uPAC
 
 class ModbusRTUClient
 {
@@ -34,7 +20,7 @@ private:
 #ifdef FAKE_PORT
 	COMPortFake     COM;        // Instance of fake COM port class
 #else
-	COMPort         COM;        // Instance of COM port class
+	COMPort        COM;        // Instance of COM port class
 #endif
 	unsigned char   devAddress; // Server device address
 	// Number of repeated transmit attempts when transmit fails (default: 5)
@@ -44,19 +30,25 @@ private:
 
 	/**
 	 * @brief Calculates CRC16
-	 *   Шаг 1 : Загрузка 16-bit регистра (называемого CRC регистром) с FFFFH;
-	 *   Шаг 2: Исключающее ИЛИ первому 8-bit байту из командного сообщения с байтом младшего
-	 *   порядка из 16-bit регистра CRC, помещение результата в CRC регистр.
-	 *   Шаг 3: Сдвиг одного бита регистра CRC вправо с MSB нулевым заполнением. Извлечение и
-	 *   проверка LSB.
-	 *   Шаг 4: Если LSB CRC регистра равно 0, повторите шаг 3, в противном случае исключающее ИЛИ
-	 *   CRC регистра с полиномиальным значением A001H.
-	 *   Шаг 5: Повторяйте шаг 3 и 4, до тех пор, пока восемь сдвигов не будут выполнены. Затем, полный
-	 *   8-bit байт будет обработан.
-	 *   Шаг 6: Повторите шаг со 2 по 5 для следующих 8-bit байтов из командного сообщения.
-	 *   Продолжайте пока все байты не будут обработаны. Конечное содержание CRC регистра CRC
-	 *   значение. При передачи значения CRC в сообщении, старшие и младшие байты значения CRC должны
-	 *   меняться, то есть сначала будет передан младший байт.
+	 * 
+	 * Step 1: Load a 16-bit register (called CRC register) with FFFFH.
+	 * Step 2: Exclusive OR the first 8-bit byte of the command message
+	 * with the low order byte of the 16-bit CRC register,
+	 * putting the result in the CRC register. 
+	 * Step 3: Examine the LSB of CRC register. 
+	 * Step 4: If the LSB of CRC register is 0, shift the CRC register
+	 * one bit to the right with MSB zero filling, then repeat step 3.
+	 * If the LSB of CRC register is 1, shift the CRC register
+	 * one bit to the right with MSB zero filling, Exclusive OR the
+	 * CRC register with the polynomial value A001H, then repeat step 3.
+	 * Step 5: Repeat step 3 and 4 until eight shifts have been performed.
+	 * When this is done, a complete 8-bit byte will have been processed.
+	 * Step 6: Repeat step 2 to 5 for the next 8-bit byte of the command message.
+	 * Continue doing this until all bytes have been processed.
+	 * The final contents of the CRC register are the CRC value.
+	 * When transmitting the CRC value in the message,
+	 * the upper and lower bytes of the CRC value must be swapped,
+	 * i.e. the lower order byte will be transmitted first.
 	 *
 	 * @param data[in]		- a pointer to the message buffer
 	 * @param length[in]	- the message buffer length
@@ -68,10 +60,10 @@ private:
 	 * @brief Check CRC of response message
 	 *
 	 * @param pduBytes[in]	- PDU size in bytes
-	 * @return true			- If frame CRC check success
-	 * @return false		- If CRC check mismatch
+	 * @return 1			- If frame CRC check success
+	 * @return 0			- If CRC check mismatch
 	 */
-	bool responseCRCCheck(unsigned char pduBytes);
+	char responseCRCCheck(unsigned char pduBytes);
 
 	/**
 	 * @brief Transfers one frame to server.
@@ -84,29 +76,17 @@ private:
 	 *
 	 * @param wPDUBytes[in]	- Number of PDU bytes to write
 	 * @param rPDUBytes[in]	- Number of PDU bytes to read
-	 * @return true			- If transfer success
-	 * @return false		- If some error occurred
+	 * @return 1			- If transfer success
+	 * @return 0			- If some error occurred
 	 */
-	bool Transfer(unsigned char wPDUBytes, unsigned char rPDUBytes);
+	char Transfer(unsigned char wPDUBytes, unsigned char rPDUBytes);
 
 	/**
 	 * @brief Print Modbus exception by its code
 	 *
 	 */
-	void PrintException(unsigned int attempt);
+	void PrintException(unsigned char attempt);
 public:
-#ifdef FAKE_PORT
-	/**
-	 * @brief Construct a new ModbusRTUClient object with fake COM port object for testing.
-	 * Setup port communication parameters
-	 *
-	 * @param devAddress[in]	- Modbus server address. (Range: 0-247, Default: 1)
-	 * @param com[in]           - COMPortFake class instance with its parameters
-	 * (Defaults according to: Modbus_over_serial_line_V1_02.pdf)
-	 */
-	ModbusRTUClient(unsigned char devAddress = 1,
-		COMPortFake com = { "COM3", 19200, 8, 'E', 1 });
-#else
 	/**
 	 * @brief Construct a new ModbusRTUClient object.
 	 * Setup port communication parameters
@@ -115,9 +95,7 @@ public:
 	 * @param com[in]           - COMPort class instance with its parameters
 	 * (Defaults according to: Modbus_over_serial_line_V1_02.pdf)
 	 */
-	ModbusRTUClient(unsigned char devAddress = 1,
-		COMPort com = { "COM3", 19200, 8, 'E', 1 });
-#endif
+	ModbusRTUClient(unsigned char devAddress, COMPort com);
 
 	/**
 	 * @brief Copy constructor for ModbusRTUClient.
@@ -126,32 +104,6 @@ public:
 	 * @param other[in]     - ModbusRTUClient object that will be copied into current instance
 	 */
 	ModbusRTUClient(ModbusRTUClient& other);
-
-	///**
-	// * @brief Copy operaror for ModbusRTUClient.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in]         - ModbusRTUClient object that will be copied into current instance
-	// * @return ModbusRTUClient& - reference to current instance of class
-	// */
-	//ModbusRTUClient& operator =(ModbusRTUClient& other);
-
-	/**
-	 * @brief Move constructor for ModbusRTUClient.
-	 * Is necessary for correct handle transfers and share resourse.
-	 *
-	 * @param other[in]     - ModbusRTUClient object that will be moved into current instance
-	 */
-	ModbusRTUClient(ModbusRTUClient&& other) noexcept;
-
-	///**
-	// * @brief Move operator for ModbusRTUClient.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in]         - ModbusRTUClient object that will be moved into current instance
-	// * @return ModbusRTUClient& - reference to current instance of class
-	// */
-	//ModbusRTUClient& operator =(ModbusRTUClient&& other) noexcept;
 
 	/**
 	 * @brief Destroy the Modbus RTU Client object
@@ -167,10 +119,10 @@ public:
 	 * @param startAddress[in]	- Starting Address (0x0000 to 0xFFFF)
 	 * @param nRegisters[in]    - Quantity of Registers (1 to 125 (0x7D))
 	 * @param buf[out]          - Buffer to store the read result as 16-bit HEX values.
-	 * @return true				- If read success
-	 * @return false			- If some error occurred
+	 * @return 1				- If read success
+	 * @return 0			- If some error occurred
 	 */
-	bool ReadHoldingRegisters(
+	char ReadHoldingRegisters(
 		unsigned short startAddress,
 		unsigned char nRegisters,
 		unsigned short* buf);
@@ -181,10 +133,10 @@ public:
 	 *
 	 * @param regAddress[in]	- Register Address (0x0000 to 0xFFFF)
 	 * @param regValue[in]      - Register Value (0x0000 to 0xFFFF)
-	 * @return true				- If write success
-	 * @return false			- If some error occurred
+	 * @return 1				- If write success
+	 * @return 0			- If some error occurred
 	 */
-	bool WriteSingleRegister(
+	char WriteSingleRegister(
 		unsigned short regAddress,
 		unsigned short regValue);
 

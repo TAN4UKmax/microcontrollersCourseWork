@@ -36,19 +36,25 @@ private:
 
 	/**
 	 * @brief Calculates CRC16
-	 *   Шаг 1 : Загрузка 16-bit регистра (называемого CRC регистром) с FFFFH;
-	 *   Шаг 2: Исключающее ИЛИ первому 8-bit байту из командного сообщения с байтом младшего
-	 *   порядка из 16-bit регистра CRC, помещение результата в CRC регистр.
-	 *   Шаг 3: Сдвиг одного бита регистра CRC вправо с MSB нулевым заполнением. Извлечение и
-	 *   проверка LSB.
-	 *   Шаг 4: Если LSB CRC регистра равно 0, повторите шаг 3, в противном случае исключающее ИЛИ
-	 *   CRC регистра с полиномиальным значением A001H.
-	 *   Шаг 5: Повторяйте шаг 3 и 4, до тех пор, пока восемь сдвигов не будут выполнены. Затем, полный
-	 *   8-bit байт будет обработан.
-	 *   Шаг 6: Повторите шаг со 2 по 5 для следующих 8-bit байтов из командного сообщения.
-	 *   Продолжайте пока все байты не будут обработаны. Конечное содержание CRC регистра CRC
-	 *   значение. При передачи значения CRC в сообщении, старшие и младшие байты значения CRC должны
-	 *   меняться, то есть сначала будет передан младший байт.
+	 * 
+	 * Step 1: Load a 16-bit register (called CRC register) with FFFFH.
+	 * Step 2: Exclusive OR the first 8-bit byte of the command message
+	 * with the low order byte of the 16-bit CRC register,
+	 * putting the result in the CRC register. 
+	 * Step 3: Examine the LSB of CRC register. 
+	 * Step 4: If the LSB of CRC register is 0, shift the CRC register
+	 * one bit to the right with MSB zero filling, then repeat step 3.
+	 * If the LSB of CRC register is 1, shift the CRC register
+	 * one bit to the right with MSB zero filling, Exclusive OR the
+	 * CRC register with the polynomial value A001H, then repeat step 3.
+	 * Step 5: Repeat step 3 and 4 until eight shifts have been performed.
+	 * When this is done, a complete 8-bit byte will have been processed.
+	 * Step 6: Repeat step 2 to 5 for the next 8-bit byte of the command message.
+	 * Continue doing this until all bytes have been processed.
+	 * The final contents of the CRC register are the CRC value.
+	 * When transmitting the CRC value in the message,
+	 * the upper and lower bytes of the CRC value must be swapped,
+	 * i.e. the lower order byte will be transmitted first.
 	 *
 	 * @param data[in]		- a pointer to the message buffer
 	 * @param length[in]	- the message buffer length
@@ -119,15 +125,6 @@ public:
 	 */
 	ModbusRTUClient(ModbusRTUClient& other);
 
-	///**
-	// * @brief Copy operaror for ModbusRTUClient.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in]         - ModbusRTUClient object that will be copied into current instance
-	// * @return ModbusRTUClient& - reference to current instance of class
-	// */
-	//ModbusRTUClient& operator =(ModbusRTUClient& other);
-
 	/**
 	 * @brief Move constructor for ModbusRTUClient.
 	 * Is necessary for correct handle transfers and share resourse.
@@ -135,15 +132,6 @@ public:
 	 * @param other[in]     - ModbusRTUClient object that will be moved into current instance
 	 */
 	ModbusRTUClient(ModbusRTUClient&& other) noexcept;
-
-	///**
-	// * @brief Move operator for ModbusRTUClient.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in]         - ModbusRTUClient object that will be moved into current instance
-	// * @return ModbusRTUClient& - reference to current instance of class
-	// */
-	//ModbusRTUClient& operator =(ModbusRTUClient&& other) noexcept;
 
 	/**
 	 * @brief Destroy the Modbus RTU Client object

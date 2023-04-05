@@ -60,40 +60,6 @@ public:
 	 */
 	VFD(ModbusRTUClient mb = { 1, {"COM3", 9600, 8, 'E', 1} });
 
-	///**
-	// * @brief Copy constructor for VFD.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in] - VFD object that will be copied into current instance
-	// */
-	//VFD(VFD& other);
-
-	///**
-	// * @brief Copy operaror for VFD.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in] - VFD object that will be copied into current instance
-	// * @return VFD& - reference to current instance of class
-	// */
-	//VFD& operator =(VFD& other);
-
-	///**
-	// * @brief Move constructor for VFD.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in] - VFD object that will be moved into current instance
-	// */
-	//VFD(VFD&& other) noexcept;
-
-	///**
-	// * @brief Move operator for VFD.
-	// * Is necessary for correct handle transfers and share resourse.
-	// *
-	// * @param other[in] - VFD object that will be moved into current instance
-	// * @return VFD& - reference to current instance of class
-	// */
-	//VFD& operator =(VFD&& other) noexcept;
-
 	/**
 	 * @brief Destroy the VFD object
 	 *

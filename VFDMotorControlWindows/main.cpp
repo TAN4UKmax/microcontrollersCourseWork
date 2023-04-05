@@ -4,8 +4,6 @@
  * @brief VFDMotorControl main file
  *
 
- // TODO сохранение прошлого параметра порта
-
 Help
 This program can control Delta VFD-B.
 Input commandline arguments:
@@ -247,7 +245,6 @@ void HandleCLIArguments(int argc, char* argv[])
 		// Handle --file argument
 		else if (!strcmp(argv[i], "--file"))
 		{
-
 			if (argv[i + 1] != nullptr)
 			{
 				CMD.file = true;
@@ -299,12 +296,12 @@ void HandleCLIArguments(int argc, char* argv[])
 					setParam.Frequency_f = true;
 					if (argv[i + 2] != nullptr) setParam.Frequency_v = atof(argv[i + 2]);
 				}
-				if (!strcmp(argv[i + 1], "AccelerationTime"))
+				else if (!strcmp(argv[i + 1], "AccelerationTime"))
 				{
 					setParam.AccelerationTime_f = true;
 					if (argv[i + 2] != nullptr) setParam.AccelerationTime_v = atof(argv[i + 2]);
 				}
-				if (!strcmp(argv[i + 1], "DecelerationTime"))
+				else if (!strcmp(argv[i + 1], "DecelerationTime"))
 				{
 					setParam.DecelerationTime_f = true;
 					if (argv[i + 2] != nullptr) setParam.DecelerationTime_v = atof(argv[i + 2]);
@@ -312,7 +309,6 @@ void HandleCLIArguments(int argc, char* argv[])
 				else
 				{
 					setParam.reg_f = true;
-					//if (argv[i + 2] != nullptr) setParam.reg_v = atof(argv[i + 2]);
 					if (argv[i + 1] != nullptr) // read register address that has to be set
 					{
 						sscanf_s(argv[i + 1], "%hX", &(setParam.reg_a));
@@ -399,18 +395,11 @@ bool GetMotorParameters(VFD& motor)
 #ifndef NDEBUG
 	clock_t start_time = clock();
 #endif // NDEBUG
-	// Read all parameters and status
-	//if (getParam.FrequencyCommand || getParam.OutFrequency ||
-	//	getParam.OutCurrent || getParam.DCVoltage ||
-	//	getParam.OutVoltage || getParam.PowerFactor ||
-	//	getParam.OutTorque || getParam.MotorSpeed)
-	//{
 	if (!motor.ReadParameterRegisters(&motorStatus, &motorParams))
 	{
 		assert(("main::GetMotorParameters() Read parameters error", 0));
 		return false;
 	}
-	//}
 	// Read OutPower parameter
 	if (getParam.OutPower)
 	{
@@ -590,7 +579,6 @@ void PrintParameters(double Time /* = -1 */, FILE* printStream /* = stdout */)
 		else fprintf(printStream, "\t");
 		fprintf(printStream, "%g", VFDtemperature);
 	}
-
 	if (getParam.reg)
 	{
 		if (firstTime) firstTime = false;
