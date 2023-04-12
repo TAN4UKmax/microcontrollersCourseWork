@@ -12,7 +12,7 @@
 #ifndef COMPORT_H
 #define COMPORT_H
 
-#include ".\Lib\7188E.H"  // 7188EX uPAC
+#include "7188E.H"  // 7188EX uPAC Driver
 
 class COMPort
 {

@@ -12,7 +12,7 @@
 #ifndef MODBUSRTUCLIENT_H
 #define MODBUSRTUCLIENT_H
 
-#include ".\INC\COMPORT.H"  // 7188EX uPAC
+#include "COMPORT.H"  // COM Port Driver
 
 class ModbusRTUClient
 {

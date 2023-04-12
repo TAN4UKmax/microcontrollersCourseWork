@@ -22,7 +22,7 @@
 //#define NDEBUG
 #include <assert.h>	// for debug printing
 
-#include ".\INC\VFD.H" // 7188EX uPAC
+#include "VFD.H" // VFD Driver
 
 // Global variables ///////////////////////////////////////////////////////////
 

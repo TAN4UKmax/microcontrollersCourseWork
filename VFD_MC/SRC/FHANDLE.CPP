@@ -10,11 +10,7 @@
  *
  */
 
- //#ifdef _I7188E_
-#include ".\INC\MAIN.H" // 7188EX uPAC
-//#else
-//#include "..\INC\MAIN.H" // windows
-//#endif
+#include "MAIN.H"
 
  /**
   * @brief Functions is used to reset this program
@@ -72,20 +68,24 @@ char RunDiagramFromFile(VFD& motor)
 	if (diagram_FILE == 0)
 	{
 		assert(("main::RunDiagramFromFile(): Read coords file error", 0));
-		return 0;
+		// Reset 7188 controller
+		ResetProgram();
 	}
 	// 3) Print output parameters table header to screen
 	// 3.1) Read and print initial parameters
 	PrintParametersHeader(1); // Prints with time
 	// 4) Update max frequency and read parameters to determine current frequency
 	// (This will allow to start motor not only from zero frequency)
-	if (!GetMotorParameters(motor)) return 0;
+	if (!GetMotorParameters(motor))
+		// Reset 7188 controller
+		ResetProgram();
 	OutParameters(0); // Out parameters at 0 time
 	// 5) Set watchdog 
 	if (!motor.SetWatchdog(1))
 	{
 		assert(("main::RunDiagramFromFile(): Set watchdog timer error", 0));
-		return 0;
+		// Reset 7188 controller
+		ResetProgram();
 	}
 	// 6) Create initial variables
 	// parameters from file
@@ -118,7 +118,9 @@ char RunDiagramFromFile(VFD& motor)
 				// Reached end of file
 				LedOff(); // Switch off LED on 7188 uPAC
 				// 1) Print last coordinate parameters
-				if (!GetMotorParameters(motor)) return 0;
+				if (!GetMotorParameters(motor))
+					// Reset 7188 controller
+					ResetProgram();
 				timeNow = (GetTimeTicks() / 1000.0) - timeStart; // get new fresh time
 				OutParameters(timeNow);
 
@@ -126,12 +128,12 @@ char RunDiagramFromFile(VFD& motor)
 				if (!motor.SetDecelerationTime(0) || !motor.Stop())
 				{
 					assert(("main::RunDiagramFromFile(): Stop motor error", 0));
-					return 0;
+					// Reset 7188 controller
+					ResetProgram();
 				}
 
 				// 3) Reset 7188 controller
 				ResetProgram();
-				return 1;
 			}
 #ifndef NDEBUG
 			Print("main::RunDiagramFromFile() Change frequency to %g in %g s\n", fileFreqNext, fileTimeNext);
@@ -140,7 +142,8 @@ char RunDiagramFromFile(VFD& motor)
 			if (!motor.ChangeFrequency(fileFreqCur, fileFreqNext, fileTimeNext - fileTimeCur))
 			{
 				assert(("main::RunDiagramFromFile(): Change frequency error", 0));
-				return 0;
+				// Reset 7188 controller
+				ResetProgram();
 			}
 		}
 		// Read current motor parameters (every 100 ms)
@@ -151,7 +154,9 @@ char RunDiagramFromFile(VFD& motor)
 			Print("main::RunDiagramFromFile() Read parameters in %g\n", timeNow);
 #endif // NDEBUG
 			timeLastOperation = timeNow;
-			if (!GetMotorParameters(motor)) return 0;
+			if (!GetMotorParameters(motor))
+				// Reset 7188 controller
+				ResetProgram();
 			timeNow = (GetTimeTicks() / 1000.0) - timeStart; // get new fresh time
 			OutParameters(timeNow);
 		}
@@ -161,17 +166,21 @@ char RunDiagramFromFile(VFD& motor)
 		//Stop motor from INIT* button
 		if (ReadInitPin())
 		{
+			// Small delay for debounce prevent
+			Delay(10);
+			// 0) Wait for button release
+			while (ReadInitPin());
 			// 1) Switch off the LED
 			LedOff();
 			// 2) Stop motor at the minimal deceleration (0 deceleration time is dangerous)
 			if (!motor.SetDecelerationTime(0) || !motor.Stop())
 			{
 				assert(("main::RunDiagramFromFile(): Stop motor error", 0));
-				return 0;
+				// Reset 7188 controller
+				ResetProgram();
 			}
 			// 3) Reset 7188 controller program
 			ResetProgram();
-			return 1;
 		}
 	}
 }

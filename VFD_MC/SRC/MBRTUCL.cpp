@@ -1,4 +1,4 @@
-#include ".\INC\MBRTUCL.H" // 7188EX uPAC
+#include "MBRTUCL.H"
 
 #include <string.h>
 

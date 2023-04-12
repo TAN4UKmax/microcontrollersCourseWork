@@ -13,7 +13,7 @@
 #ifndef VFD_H
 #define VFD_H
 
-#include ".\INC\MBRTUCL.H" // 7188EX uPAC
+#include "MBRTUCL.H" // Modbus RTU client Driver
 
 // Stores VFD status from 0x2101 register
 typedef struct VFD_status {

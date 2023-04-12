@@ -1,4 +1,4 @@
-#include ".\INC\COMPORT.H"	// 7188EX uPAC
+#include "COMPORT.H"	// COM Port Driver
 
 #include <string.h>	// for string data operations
 

@@ -1,4 +1,4 @@
-#include ".\INC\VFD.H" // 7188EX uPAC
+#include "VFD.H"
 
 #include <math.h> // for calculations
 
