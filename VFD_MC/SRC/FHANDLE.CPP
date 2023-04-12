@@ -44,6 +44,7 @@ char RunDiagramFromFile(VFD& motor)
 {
 	// 0) Wait for button press
 	while (ReadInitPin() == 0);
+	LedOff();
 	Delay(50); // debounce prevent
 
 	// 1) Update max frequency parameter from VFD (and check connection by doing this)
